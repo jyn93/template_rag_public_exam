@@ -107,6 +107,21 @@ Ejemplos:
 
 ## 2. Estándares de Código Python
 
+### 2.0 Idioma del Código — Obligatorio Inglés
+
+```
+✅ ALL code must be written in English:
+   - Variable names, function names, class names
+   - Docstrings and inline comments
+   - Log messages
+   - Exception messages
+   - Type aliases and constants
+
+⛔ NEVER write Spanish in source code, docstrings, or comments.
+   Spanish is only allowed in: this CLAUDE.md file, user-facing UI strings,
+   and exam/domain content (e.g. question text stored as data).
+```
+
 ### 2.1 Versión y Herramientas
 
 ```toml
@@ -168,22 +183,22 @@ async def load_document(path, subject):
 
 ```python
 def retrieve(self, query: str, top_k: int = 5) -> list[RetrievalResult]:
-    """Recupera los chunks más relevantes para una query.
+    """Retrieve the most relevant chunks for a given query.
 
     Args:
-        query: Pregunta o búsqueda del usuario en lenguaje natural.
-        top_k: Número máximo de resultados a devolver.
+        query: User question or search in natural language.
+        top_k: Maximum number of results to return.
 
     Returns:
-        Lista de RetrievalResult ordenada por relevancia descendente.
+        List of RetrievalResult sorted by descending relevance.
 
     Raises:
-        VectorStoreError: Si Qdrant no está disponible.
-        ValueError: Si query está vacía.
+        VectorStoreError: If Qdrant is not available.
+        ValueError: If query is empty.
 
     Example:
         >>> retriever = HybridRetriever(index)
-        >>> results = await retriever.retrieve("¿Qué es el recurso de alzada?")
+        >>> results = await retriever.retrieve("What is the appeal procedure?")
         >>> print(results[0].content)
     """
 ```
@@ -226,23 +241,23 @@ DEFAULT_TOP_K = 5
 ### 2.5 Gestión de Errores
 
 ```python
-# src/core/exceptions.py — Jerarquía de excepciones del dominio
+# src/core/exceptions.py — Domain exception hierarchy
 class RAGOposicionesError(Exception):
-    """Base para todas las excepciones del proyecto."""
+    """Base class for all project exceptions."""
 
 class IngestionError(RAGOposicionesError):
-    """Error durante la ingesta de documentos."""
+    """Error during document ingestion."""
 
 class RetrievalError(RAGOposicionesError):
-    """Error durante la recuperación de contexto."""
+    """Error during context retrieval."""
 
 class GenerationError(RAGOposicionesError):
-    """Error durante la generación de respuesta."""
+    """Error during response generation."""
 
 class VectorStoreError(RAGOposicionesError):
-    """Error de comunicación con Qdrant."""
+    """Error communicating with Qdrant."""
 
-# Uso correcto: capturar específico, relanzar con contexto
+# Correct usage: catch specific, re-raise with context
 try:
     results = await qdrant_client.search(...)
 except Exception as e:
@@ -256,11 +271,11 @@ import structlog
 
 logger = structlog.get_logger(__name__)
 
-# ✅ CORRECTO — con contexto
+# ✅ CORRECT — with context
 logger.info("document_ingested", file=path.name, chunks=len(chunks), subject=subject)
 logger.error("retrieval_failed", query=query, error=str(e))
 
-# ❌ INCORRECTO — sin estructura
+# ❌ INCORRECT — unstructured
 print(f"Ingested {path.name}")
 logging.info("Error: " + str(e))
 ```
@@ -324,7 +339,7 @@ from src.core.generation.base import GenerationInput
 
 @pytest.fixture
 def mock_llm():
-    """LLM client simulado que devuelve JSON de examen válido."""
+    """Simulated LLM client that returns valid exam JSON."""
     client = AsyncMock()
     client.complete.return_value = '{"questions": [{"id": 1, "type": "test", ...}]}'
     return client
@@ -336,9 +351,9 @@ def exam_generator(mock_llm):
 @pytest.fixture
 def sample_input():
     return GenerationInput(
-        query="Recurso de alzada",
-        context=["El recurso de alzada es...", "Se interpone ante..."],
-        metadata={"subject": "Derecho Administrativo"},
+        query="Appeal procedure",
+        context=["The appeal procedure is...", "It is filed before..."],
+        metadata={"subject": "Administrative Law"},
     )
 
 # ── Tests ─────────────────────────────────────────────────────────────────────
@@ -348,7 +363,7 @@ class TestExamGenerator:
 
     @pytest.mark.asyncio
     async def test_generate_returns_questions(self, exam_generator, sample_input):
-        """Verifica que generate() devuelve preguntas en el formato esperado."""
+        """Verify that generate() returns questions in the expected format."""
         result = await exam_generator.generate(sample_input)
 
         assert result.content is not None
@@ -356,27 +371,27 @@ class TestExamGenerator:
 
     @pytest.mark.asyncio
     async def test_generate_calls_llm_once(self, exam_generator, sample_input, mock_llm):
-        """Verifica que se llama al LLM exactamente una vez."""
+        """Verify that the LLM is called exactly once."""
         await exam_generator.generate(sample_input)
 
         mock_llm.complete.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_generate_raises_on_empty_context(self, exam_generator):
-        """Verifica que se lanza ValueError con contexto vacío."""
+        """Verify that ValueError is raised with empty context."""
         bad_input = GenerationInput(query="test", context=[])
 
-        with pytest.raises(ValueError, match="contexto"):
+        with pytest.raises(ValueError, match="context"):
             await exam_generator.generate(bad_input)
 
     @pytest.mark.asyncio
     async def test_generate_handles_malformed_json(self, exam_generator, sample_input, mock_llm):
-        """Verifica que JSON malformado del LLM se maneja sin crash."""
-        mock_llm.complete.return_value = "Aquí está el examen: ```json{...}```"
+        """Verify that malformed JSON from the LLM is handled without crashing."""
+        mock_llm.complete.return_value = "Here is the exam: ```json{...}```"
 
         result = await exam_generator.generate(sample_input)
 
-        # No debe lanzar excepción; devuelve estructura vacía como fallback
+        # Must not raise; returns empty structure as fallback
         assert isinstance(result.content, dict)
 
 # ── Parametrize para casos límite ─────────────────────────────────────────────
@@ -388,7 +403,7 @@ class TestExamGenerator:
 ])
 @pytest.mark.asyncio
 async def test_generator_all_types(mock_llm, sample_input, exam_type, difficulty):
-    """Verifica que todos los tipos y dificultades funcionan."""
+    """Verify that all exam types and difficulty levels work correctly."""
     generator = ExamGenerator(mock_llm, num_questions=3,
                                exam_type=exam_type, difficulty=difficulty)
     result = await generator.generate(sample_input)
@@ -405,7 +420,7 @@ from src.core.config.settings import Settings
 
 @pytest.fixture(scope="session")
 def test_settings():
-    """Settings con valores de test (sin API keys reales)."""
+    """Settings with test values (no real API keys)."""
     return Settings(
         llm_provider="openai",
         llm_model="gpt-4o-mini",
@@ -417,7 +432,7 @@ def test_settings():
 
 @pytest.fixture
 def mock_llm_client():
-    """LLM client mock reutilizable en todos los tests."""
+    """Reusable LLM client mock for all tests."""
     client = AsyncMock()
     client.complete = AsyncMock(return_value='{"result": "ok"}')
     client.stream = AsyncMock()
