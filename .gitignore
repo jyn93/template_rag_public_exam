@@ -212,3 +212,6 @@ data/raw/
 debug_*
 temp_*
 docker-compose.override.yml
+
+# Claude
+.claude
