@@ -1,0 +1,33 @@
+# Development override — use with: docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+#
+# Changes from base:
+#   - API hot-reloads on source code changes (uvicorn --reload)
+#   - Frontend hot-reloads on source code changes
+#   - Debug mode enabled
+#   - No restart policy (easier to inspect crashes)
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.api
+      target: development
+    command: uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --reload
+    environment:
+      DEBUG: "true"
+      LOG_LEVEL: DEBUG
+    volumes:
+      - ./src:/app/src
+      - ./tests:/app/tests
+      - ./data:/app/data
+    restart: "no"
+
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.frontend
+      target: development
+    command: streamlit run src/frontend/app.py --server.address 0.0.0.0 --server.port 8501 --server.runOnSave true
+    volumes:
+      - ./src:/app/src
+    restart: "no"
