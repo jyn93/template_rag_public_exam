@@ -65,6 +65,8 @@ def mock_doc_storage() -> AsyncMock:
         AsyncMock configured with default successful responses.
     """
     storage = AsyncMock()
-    storage.upload = AsyncMock(return_value={"bucket": "temario-docs", "key": "test.pdf"})
+    storage.upload = AsyncMock(
+        return_value={"bucket": "temario-docs", "key": "test.pdf"}
+    )
     storage.download = AsyncMock(return_value=b"file content")
     return storage

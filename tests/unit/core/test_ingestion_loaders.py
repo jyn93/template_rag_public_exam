@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import io
 from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from src.core.exceptions import IngestionError
 from src.core.ingestion.base import Document, DocumentLoader
+from src.core.ingestion.pdf_loader import PDFDocumentLoader
 from src.core.ingestion.txt_loader import TxtDocumentLoader
 
 # ---------------------------------------------------------------------------
@@ -214,3 +217,162 @@ class TestTxtDocumentLoaderLoad:
         loader = TxtDocumentLoader(encoding="latin-1")
         docs = loader.load(file)
         assert docs[0].content == text
+
+
+# ---------------------------------------------------------------------------
+# Helpers for PDF tests
+# ---------------------------------------------------------------------------
+
+
+def _make_pdf(path: Path, pages: int = 1) -> Path:
+    """Write a minimal valid PDF with *pages* blank pages to *path*."""
+    import pypdf
+
+    writer = pypdf.PdfWriter()
+    for _ in range(pages):
+        writer.add_blank_page(width=612, height=792)
+    buf = io.BytesIO()
+    writer.write(buf)
+    path.write_bytes(buf.getvalue())
+    return path
+
+
+# ---------------------------------------------------------------------------
+# PDFDocumentLoader.supports()
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def pdf_loader() -> PDFDocumentLoader:
+    """Return a default PDFDocumentLoader instance."""
+    return PDFDocumentLoader()
+
+
+@pytest.fixture
+def sample_pdf_file(tmp_path: Path) -> Path:
+    """Create a temporary single-page PDF file."""
+    return _make_pdf(tmp_path / "temario.pdf", pages=1)
+
+
+class TestPDFDocumentLoaderSupports:
+    """Tests for PDFDocumentLoader.supports()."""
+
+    @pytest.mark.parametrize("filename", ["file.pdf", "FILE.PDF", "temario.Pdf"])
+    def test_supports_pdf_extensions(
+        self, pdf_loader: PDFDocumentLoader, filename: str
+    ) -> None:
+        """Verify .pdf is accepted regardless of case."""
+        assert pdf_loader.supports(Path(filename)) is True
+
+    @pytest.mark.parametrize("filename", ["file.txt", "file.docx", "file.md", "file"])
+    def test_rejects_non_pdf_extensions(
+        self, pdf_loader: PDFDocumentLoader, filename: str
+    ) -> None:
+        """Verify non-.pdf files are rejected."""
+        assert pdf_loader.supports(Path(filename)) is False
+
+
+# ---------------------------------------------------------------------------
+# PDFDocumentLoader.load()
+# ---------------------------------------------------------------------------
+
+
+class TestPDFDocumentLoaderLoad:
+    """Tests for PDFDocumentLoader.load()."""
+
+    def test_returns_documents_list(
+        self, pdf_loader: PDFDocumentLoader, sample_pdf_file: Path
+    ) -> None:
+        """Verify load() returns a non-empty list for a valid PDF."""
+        docs = pdf_loader.load(sample_pdf_file)
+        assert isinstance(docs, list)
+        assert len(docs) >= 1
+
+    def test_multi_page_pdf_returns_one_doc_per_page(
+        self, pdf_loader: PDFDocumentLoader, tmp_path: Path
+    ) -> None:
+        """Verify a 3-page PDF produces 3 Documents."""
+        pdf_path = _make_pdf(tmp_path / "multi.pdf", pages=3)
+        docs = pdf_loader.load(pdf_path)
+        assert len(docs) == 3
+
+    def test_metadata_includes_source_filename(
+        self, pdf_loader: PDFDocumentLoader, sample_pdf_file: Path
+    ) -> None:
+        """Verify metadata['source'] is set to the file name."""
+        docs = pdf_loader.load(sample_pdf_file)
+        assert docs[0].metadata["source"] == sample_pdf_file.name
+
+    def test_metadata_file_type_is_pdf(
+        self, pdf_loader: PDFDocumentLoader, sample_pdf_file: Path
+    ) -> None:
+        """Verify metadata['file_type'] is 'pdf'."""
+        docs = pdf_loader.load(sample_pdf_file)
+        assert docs[0].metadata["file_type"] == "pdf"
+
+    def test_metadata_subject_stored(
+        self, pdf_loader: PDFDocumentLoader, sample_pdf_file: Path
+    ) -> None:
+        """Verify the subject argument is persisted in metadata."""
+        docs = pdf_loader.load(sample_pdf_file, subject="Administrative Law")
+        assert docs[0].metadata["subject"] == "Administrative Law"
+
+    def test_metadata_page_present(
+        self, pdf_loader: PDFDocumentLoader, sample_pdf_file: Path
+    ) -> None:
+        """Verify metadata['page'] is set for each document."""
+        docs = pdf_loader.load(sample_pdf_file)
+        assert "page" in docs[0].metadata
+
+    def test_doc_id_is_non_empty_string(
+        self, pdf_loader: PDFDocumentLoader, sample_pdf_file: Path
+    ) -> None:
+        """Verify doc_id is a non-empty string (UUID5)."""
+        docs = pdf_loader.load(sample_pdf_file)
+        assert isinstance(docs[0].doc_id, str)
+        assert len(docs[0].doc_id) > 0
+
+    def test_page_doc_ids_are_unique(
+        self, pdf_loader: PDFDocumentLoader, tmp_path: Path
+    ) -> None:
+        """Verify each page gets a distinct doc_id."""
+        pdf_path = _make_pdf(tmp_path / "multi.pdf", pages=3)
+        docs = pdf_loader.load(pdf_path)
+        ids = [d.doc_id for d in docs]
+        assert len(set(ids)) == len(ids)
+
+    def test_raises_value_error_for_missing_file(
+        self, pdf_loader: PDFDocumentLoader, tmp_path: Path
+    ) -> None:
+        """Verify ValueError is raised when the file does not exist."""
+        missing = tmp_path / "nonexistent.pdf"
+        with pytest.raises(ValueError, match="File not found"):
+            pdf_loader.load(missing)
+
+    def test_raises_ingestion_error_for_corrupt_pdf(
+        self, pdf_loader: PDFDocumentLoader, tmp_path: Path
+    ) -> None:
+        """Verify IngestionError is raised for a corrupt/invalid PDF."""
+        bad_pdf = tmp_path / "corrupt.pdf"
+        bad_pdf.write_bytes(b"this is not a valid pdf at all")
+        with pytest.raises(IngestionError, match="Cannot parse PDF"):
+            pdf_loader.load(bad_pdf)
+
+    def test_load_uses_pdf_reader(
+        self, pdf_loader: PDFDocumentLoader, sample_pdf_file: Path
+    ) -> None:
+        """Verify PDFReader is invoked during load()."""
+        mock_llama_doc = MagicMock()
+        mock_llama_doc.text = "Page content"
+        mock_llama_doc.metadata = {"page_label": "1"}
+
+        mock_reader = MagicMock()
+        mock_reader.load_data.return_value = [mock_llama_doc]
+
+        with patch("src.core.ingestion.pdf_loader.PDFReader", return_value=mock_reader):
+            docs = pdf_loader.load(sample_pdf_file, subject="Test Subject")
+
+        mock_reader.load_data.assert_called_once_with(file=sample_pdf_file)
+        assert len(docs) == 1
+        assert docs[0].content == "Page content"
+        assert docs[0].metadata["subject"] == "Test Subject"

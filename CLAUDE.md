@@ -616,7 +616,7 @@ Breve descripción de la funcionalidad añadida.
 
 ## Cambios
 - `src/core/X.py`: nueva clase Y con patrón Z
-- `tests/unit/test_X.py`: cobertura del módulo X
+- `tests/unit/test_X.py`: cobertura del módulo X. Añade siempre uni tests para ampliar la cobertura probando la funcionalidad clave sin repeticiones y sin sobre-mockear los datos.
 
 ## Testing
 - [ ] Tests unitarios pasan (`make test`)

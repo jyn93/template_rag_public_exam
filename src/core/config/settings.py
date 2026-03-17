@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 from functools import lru_cache
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -10,7 +10,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 __all__ = ["Settings", "LLMProvider", "RetrieverType", "get_settings"]
 
 
-class LLMProvider(str, Enum):
+class LLMProvider(StrEnum):
     """Supported LLM providers."""
 
     ANTHROPIC = "anthropic"
@@ -18,7 +18,7 @@ class LLMProvider(str, Enum):
     OLLAMA = "ollama"
 
 
-class RetrieverType(str, Enum):
+class RetrieverType(StrEnum):
     """Supported retriever strategies."""
 
     DENSE = "dense"
@@ -32,6 +32,7 @@ class Settings(BaseSettings):
         env_file=".env",
         env_file_encoding="utf-8",
         case_sensitive=False,
+        extra="ignore",
     )
 
     # ── App ───────────────────────────────────────────────────────────────────
@@ -63,7 +64,7 @@ class Settings(BaseSettings):
     # ── MinIO ─────────────────────────────────────────────────────────────────
     minio_endpoint: str = "localhost:9000"
     minio_access_key: str = "minioadmin"
-    minio_secret_key: str = "minioadmin123"
+    minio_secret_key: str = "minioadmin123"  # noqa: S105
     minio_bucket: str = "temario-docs"
 
     # ── RAG ───────────────────────────────────────────────────────────────────

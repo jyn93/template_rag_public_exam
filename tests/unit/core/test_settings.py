@@ -25,6 +25,7 @@ class TestSettings:
     def test_override_via_constructor(self) -> None:
         """Verify settings can be overridden programmatically."""
         settings = Settings(
+            _env_file=None,  # type: ignore[call-arg]
             debug=True,
             llm_provider="openai",
             top_k=10,
@@ -50,5 +51,8 @@ class TestSettings:
     )
     def test_all_providers_accepted(self, provider: LLMProvider) -> None:
         """Verify all LLM providers are accepted by Settings."""
-        settings = Settings(llm_provider=provider)
+        settings = Settings(
+            _env_file=None,  # type: ignore[call-arg]
+            llm_provider=provider,
+        )
         assert settings.llm_provider == provider

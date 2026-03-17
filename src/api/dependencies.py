@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
-from src.core.config.settings import Settings, get_settings
-from fastapi import Depends
 from typing import Annotated
+
+from fastapi import Depends
+
+from src.core.config.settings import Settings, get_settings
 
 __all__ = ["SettingsDep"]
 
