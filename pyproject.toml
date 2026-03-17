@@ -37,6 +37,7 @@ dependencies = [
     "slowapi>=0.1.9",
     # Frontend
     "streamlit>=1.40.0",
+    "pytest>=9.0.2",
 ]
 
 [project.optional-dependencies]
@@ -91,3 +92,6 @@ ignore_missing_imports = true
 asyncio_mode = "auto"
 testpaths = ["tests"]
 addopts = "--cov=src --cov-report=term-missing --cov-fail-under=80"
+
+[tool.coverage.run]
+omit = ["src/frontend/*"]
