@@ -215,3 +215,6 @@ docker-compose.override.yml
 
 # Claude
 .claude
+
+# IDE
+.vscode
