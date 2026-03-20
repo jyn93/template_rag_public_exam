@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, cast
 
 import structlog
@@ -26,6 +27,7 @@ _EMPTY_EVALUATION: dict[str, object] = {
 }
 
 
+@dataclass
 class EvaluationResult:
     """Typed wrapper around the LLM evaluation dict.
 
@@ -38,19 +40,32 @@ class EvaluationResult:
         raw: Original parsed dict from the LLM, for full access.
     """
 
-    def __init__(self, data: dict[str, object]) -> None:
+    score: int | float
+    is_correct: bool
+    feedback: str
+    missing_points: list[str] = field(default_factory=list)
+    strengths: list[str] = field(default_factory=list)
+    raw: dict[str, object] = field(default_factory=dict)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, object]) -> EvaluationResult:
         """Build an EvaluationResult from a parsed LLM response dict.
 
         Args:
             data: Parsed dict with ``score``, ``is_correct``, ``feedback``,
                 ``missing_points``, and ``strengths`` keys.
+
+        Returns:
+            Populated :class:`EvaluationResult` instance.
         """
-        self.score: int | float = cast(int | float, data.get("score", 0))
-        self.is_correct: bool = bool(data.get("is_correct", False))
-        self.feedback: str = str(data.get("feedback", ""))
-        self.missing_points: list[str] = cast(list[str], data.get("missing_points", []))
-        self.strengths: list[str] = cast(list[str], data.get("strengths", []))
-        self.raw: dict[str, object] = data
+        return cls(
+            score=cast(int | float, data.get("score", 0)),
+            is_correct=bool(data.get("is_correct", False)),
+            feedback=str(data.get("feedback", "")),
+            missing_points=cast(list[str], data.get("missing_points", [])),
+            strengths=cast(list[str], data.get("strengths", [])),
+            raw=data,
+        )
 
     def to_dict(self) -> dict[str, object]:
         """Serialise to a plain dict suitable for JSON API responses.
@@ -203,7 +218,7 @@ class AnswerEvaluator:
             :class:`EvaluationResult` populated from the parsed data.
         """
         data = self._extract_json(raw)
-        return EvaluationResult(data)
+        return EvaluationResult.from_dict(data)
 
     @staticmethod
     def _extract_json(raw: str) -> dict[str, object]:
