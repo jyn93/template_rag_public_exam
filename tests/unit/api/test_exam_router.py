@@ -46,7 +46,7 @@ def _make_evaluator_mock(
     if exc is not None:
         mock.evaluate = AsyncMock(side_effect=exc)
     else:
-        result = EvaluationResult(
+        result = EvaluationResult.from_dict(
             {
                 "score": 8,
                 "is_correct": True,

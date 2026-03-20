@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import time
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from typing import Any
 
 import structlog
@@ -18,12 +20,26 @@ logger = structlog.get_logger(__name__)
 
 settings = get_settings()
 
+_start_time: float = 0.0
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:  # noqa: ARG001
+    """Record the precise startup time when the application is ready."""
+    global _start_time  # noqa: PLW0603
+    _start_time = time.time()
+    logger.info("api_startup", service=settings.app_name)
+    yield
+    logger.info("api_shutdown", service=settings.app_name)
+
+
 app = FastAPI(
     title=settings.app_name,
     description="RAG system for public exam (oposiciones) preparation.",
     version="0.1.0",
     docs_url="/docs",
     redoc_url="/redoc",
+    lifespan=lifespan,
 )
 
 app.add_middleware(
@@ -37,8 +53,6 @@ app.add_middleware(
 app.include_router(ingestion_router)
 app.include_router(chat_router)
 app.include_router(exam_router)
-
-_start_time = time.time()
 
 
 @app.get("/health", tags=["ops"])

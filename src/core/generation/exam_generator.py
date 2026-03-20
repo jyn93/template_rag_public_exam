@@ -21,6 +21,7 @@ logger = structlog.get_logger(__name__)
 _DEFAULT_NUM_QUESTIONS = 10
 _DEFAULT_EXAM_TYPE = "test"
 _DEFAULT_DIFFICULTY = "media"
+# Maximum source chunks echoed back in the response (avoids large payloads)
 _MAX_SOURCES = 3
 
 

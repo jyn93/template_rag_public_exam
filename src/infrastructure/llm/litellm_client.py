@@ -108,10 +108,10 @@ class LiteLLMClient(LLMClient):
                 f"LiteLLM completion failed for model '{self._model}': {exc}"
             ) from exc
 
+        usage = getattr(response, "usage", None)
         logger.info(
             "llm_request_complete",
             model=self._model,
-            tokens_used=getattr(response, "usage", None)
-            and response.usage.total_tokens,
+            tokens_used=usage.total_tokens if usage else 0,
         )
         return text

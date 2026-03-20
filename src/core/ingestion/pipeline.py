@@ -117,6 +117,9 @@ class IngestionPipeline:
         except IngestionError:
             raise
         except Exception as exc:
+            logger.error(
+                "ingestion_load_unexpected_error", file=path.name, error=str(exc)
+            )
             raise IngestionError(
                 f"Unexpected error loading '{path.name}': {exc}"
             ) from exc
@@ -136,7 +139,9 @@ class IngestionPipeline:
         try:
             await self._vector_store.add_documents(chunks)
         except Exception as exc:
-            raise VectorStoreError(f"Failed to index chunks for '{path.name}'") from exc
+            raise VectorStoreError(
+                f"Failed to index {len(chunks)} chunks for '{path.name}'"
+            ) from exc
 
         logger.info(
             "ingestion_complete",

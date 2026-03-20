@@ -52,38 +52,48 @@ class TestEvaluationResult:
 
     def test_score_extracted(self):
         """score is read from the data dict."""
-        r = EvaluationResult({"score": 7, "is_correct": True, "feedback": "ok"})
+        r = EvaluationResult.from_dict(
+            {"score": 7, "is_correct": True, "feedback": "ok"}
+        )
         assert r.score == 7
 
     def test_is_correct_extracted(self):
         """is_correct is read from the data dict."""
-        r = EvaluationResult({"score": 0, "is_correct": False, "feedback": "bad"})
+        r = EvaluationResult.from_dict(
+            {"score": 0, "is_correct": False, "feedback": "bad"}
+        )
         assert r.is_correct is False
 
     def test_feedback_extracted(self):
         """feedback is read from the data dict."""
-        r = EvaluationResult({"score": 5, "is_correct": True, "feedback": "decent"})
+        r = EvaluationResult.from_dict(
+            {"score": 5, "is_correct": True, "feedback": "decent"}
+        )
         assert r.feedback == "decent"
 
     def test_missing_points_default_empty(self):
         """missing_points defaults to [] when absent."""
-        r = EvaluationResult({"score": 0, "is_correct": False, "feedback": ""})
+        r = EvaluationResult.from_dict(
+            {"score": 0, "is_correct": False, "feedback": ""}
+        )
         assert r.missing_points == []
 
     def test_strengths_default_empty(self):
         """strengths defaults to [] when absent."""
-        r = EvaluationResult({"score": 0, "is_correct": False, "feedback": ""})
+        r = EvaluationResult.from_dict(
+            {"score": 0, "is_correct": False, "feedback": ""}
+        )
         assert r.strengths == []
 
     def test_raw_preserved(self):
         """raw attribute holds the original dict."""
         data = {"score": 5, "is_correct": True, "feedback": "ok"}
-        r = EvaluationResult(data)
+        r = EvaluationResult.from_dict(data)
         assert r.raw is data
 
     def test_to_dict_returns_all_fields(self):
         """to_dict() includes score, is_correct, feedback, lists."""
-        r = EvaluationResult(
+        r = EvaluationResult.from_dict(
             {
                 "score": 8,
                 "is_correct": True,

@@ -148,7 +148,12 @@ async def generate_exam(
 
     try:
         output = await generator.generate(gen_input)
-    except (GenerationError, ValueError) as exc:
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Invalid generation input: {exc}",
+        ) from exc
+    except GenerationError as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Exam generation failed: {exc}",
