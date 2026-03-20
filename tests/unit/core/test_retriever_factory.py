@@ -18,7 +18,7 @@ from src.core.retrieval.hybrid_retriever import HybridRetriever
 def mock_vector_store() -> AsyncMock:
     store = AsyncMock()
     store.search = AsyncMock(return_value=[])
-    return mock_vector_store
+    return store
 
 
 def make_settings(retriever_type: RetrieverType, top_k: int = 5) -> Settings:
