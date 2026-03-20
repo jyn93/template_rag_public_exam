@@ -58,17 +58,13 @@ class TestRetrieve:
         assert isinstance(results, list)
         assert all(isinstance(r, RetrievalResult) for r in results)
 
-    async def test_calls_vector_store_search_once(
-        self, retriever, mock_vector_search
-    ):
+    async def test_calls_vector_store_search_once(self, retriever, mock_vector_search):
         """Vector store search is called exactly once per retrieve() call."""
         await retriever.retrieve("Administrative law basics")
 
         mock_vector_search.search.assert_called_once()
 
-    async def test_passes_query_to_vector_store(
-        self, retriever, mock_vector_search
-    ):
+    async def test_passes_query_to_vector_store(self, retriever, mock_vector_search):
         """The exact query string is forwarded to vector_store.search."""
         query = "What is the appeal procedure?"
         await retriever.retrieve(query)
@@ -76,9 +72,7 @@ class TestRetrieve:
         call_args = mock_vector_search.search.call_args
         assert call_args[0][0] == query or call_args[1].get("query") == query
 
-    async def test_uses_instance_top_k_when_default_passed(
-        self, mock_vector_search
-    ):
+    async def test_uses_instance_top_k_when_default_passed(self, mock_vector_search):
         """When top_k equals DEFAULT_TOP_K, the instance's top_k is used."""
         retriever = DenseRetriever(vector_store=mock_vector_search, top_k=7)
         await retriever.retrieve("test query", top_k=DEFAULT_TOP_K)
@@ -90,9 +84,7 @@ class TestRetrieve:
         )
         assert effective_k == 7
 
-    async def test_explicit_top_k_overrides_instance_default(
-        self, mock_vector_search
-    ):
+    async def test_explicit_top_k_overrides_instance_default(self, mock_vector_search):
         """An explicit top_k != DEFAULT_TOP_K is forwarded as-is."""
         retriever = DenseRetriever(vector_store=mock_vector_search, top_k=5)
         await retriever.retrieve("test query", top_k=10)
@@ -157,9 +149,7 @@ class TestRetrieve:
 
         assert exc_info.value.__cause__ is cause
 
-    async def test_result_order_is_preserved(
-        self, retriever, mock_vector_search
-    ):
+    async def test_result_order_is_preserved(self, retriever, mock_vector_search):
         """Results are returned in the same order as the vector store response."""
         ordered = make_results(5)
         mock_vector_search.search.return_value = ordered
