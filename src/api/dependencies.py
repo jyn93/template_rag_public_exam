@@ -5,6 +5,8 @@ from __future__ import annotations
 from typing import Annotated
 
 from fastapi import Depends
+from llama_index.embeddings.openai import OpenAIEmbedding
+from qdrant_client import AsyncQdrantClient
 
 from src.core.config.settings import Settings, get_settings
 from src.core.generation.evaluator import AnswerEvaluator
@@ -27,6 +29,22 @@ __all__ = [
 SettingsDep = Annotated[Settings, Depends(get_settings)]
 
 
+def _make_vector_store() -> QdrantVectorStore:
+    """Build a fully wired QdrantVectorStore from application settings."""
+    settings = get_settings()
+    client = AsyncQdrantClient(url=settings.qdrant_url)
+    embedding_model = OpenAIEmbedding(
+        model=settings.embedding_model,
+        api_key=settings.openai_api_key,
+    )
+    return QdrantVectorStore(
+        client=client,
+        embedding_model=embedding_model,
+        collection_name=settings.qdrant_collection,
+        embedding_dim=settings.embedding_dim,
+    )
+
+
 def get_ingestion_pipeline() -> IngestionPipeline:
     """Build and return a fully wired IngestionPipeline.
 
@@ -36,7 +54,7 @@ def get_ingestion_pipeline() -> IngestionPipeline:
     Returns:
         Ready-to-use IngestionPipeline instance.
     """
-    vector_store = QdrantVectorStore()
+    vector_store = _make_vector_store()
     doc_storage = MinIOStorage()
     loaders = [PDFDocumentLoader(), TxtDocumentLoader()]
     return IngestionPipeline(
@@ -66,7 +84,7 @@ def get_retriever() -> Retriever:
         Concrete :class:`~src.core.retrieval.base.Retriever` instance
         (Dense or Hybrid depending on settings).
     """
-    vector_store = QdrantVectorStore()
+    vector_store = _make_vector_store()
     return RetrieverFactory.create(vector_store=vector_store)
 
 
