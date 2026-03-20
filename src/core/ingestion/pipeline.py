@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Protocol
 
 import structlog
 from llama_index.core.node_parser import SentenceSplitter
@@ -11,41 +10,11 @@ from llama_index.core.node_parser import SentenceSplitter
 from src.core.config.settings import get_settings
 from src.core.exceptions import IngestionError, StorageError, VectorStoreError
 from src.core.ingestion.base import Document, DocumentLoader
+from src.core.protocols import DocStorageProtocol, VectorIndexProtocol
 
-__all__ = ["DocStorageProtocol", "IngestionPipeline", "VectorStoreProtocol"]
+__all__ = ["IngestionPipeline"]
 
 logger = structlog.get_logger(__name__)
-
-
-class VectorStoreProtocol(Protocol):
-    """Minimal interface for vector stores consumed by IngestionPipeline."""
-
-    async def add_documents(self, documents: list[Document]) -> dict[str, object]:
-        """Embed and persist a list of documents in the vector store.
-
-        Args:
-            documents: Chunked documents to index.
-
-        Returns:
-            Arbitrary result dict (implementation-defined).
-        """
-        ...
-
-
-class DocStorageProtocol(Protocol):
-    """Minimal interface for object storage consumed by IngestionPipeline."""
-
-    async def upload(self, path: Path, subject: str) -> dict[str, object]:
-        """Upload a raw document file to object storage.
-
-        Args:
-            path: Local path to the source file.
-            subject: Subject / topic name used to organise the stored file.
-
-        Returns:
-            Arbitrary result dict (implementation-defined).
-        """
-        ...
 
 
 class IngestionPipeline:
@@ -77,7 +46,7 @@ class IngestionPipeline:
     def __init__(
         self,
         loaders: list[DocumentLoader],
-        vector_store: VectorStoreProtocol,
+        vector_store: VectorIndexProtocol,
         doc_storage: DocStorageProtocol,
     ) -> None:
         """Initialise the pipeline with its collaborators.
@@ -87,9 +56,9 @@ class IngestionPipeline:
                 The first loader whose :meth:`~DocumentLoader.supports` method
                 returns ``True`` for a given file is used.
             vector_store: Vector store implementation that satisfies
-                :class:`VectorStoreProtocol`.
+                :class:`~src.core.protocols.VectorIndexProtocol`.
             doc_storage: Object storage implementation that satisfies
-                :class:`DocStorageProtocol`.
+                :class:`~src.core.protocols.DocStorageProtocol`.
         """
         self._loaders = loaders
         self._vector_store = vector_store
