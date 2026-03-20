@@ -37,7 +37,7 @@ Sistema RAG (Retrieval-Augmented Generation) modular y extensible para preparaci
 ┌──────▼──────┐   ┌────────────▼──────────┐  ┌─────────▼────────┐
 │   MinIO     │   │   Qdrant              │  │   LLM (LiteLLM)  │
 │  :9000/9001 │   │  Vector DB  :6333     │  │  Anthropic/OpenAI│
-│  (docs PDF) │   │  (embeddings)         │  │  /Ollama         │
+│  (docs PDF) │   │  (embeddings)         │  │  /Ollama/Groq    │
 └─────────────┘   └───────────────────────┘  └──────────────────┘
                                                         │
                                               ┌─────────▼────────┐
@@ -310,7 +310,7 @@ Tema / query
    - **Subject filter**: tema opcional
    - **Exam type**: `test` (tipo test), `desarrollo` (respuesta abierta), `mixto`
    - **Difficulty**: `facil`, `media`, `dificil`
-   - **Number of questions**: 1–15
+   - **Number of questions**: 1–20
    - **Context chunks (top-k)**: fragmentos de contexto a recuperar
 3. Escribe el concepto o tema a examinar y pulsa **Generate Exam**
 4. Responde las preguntas (radio buttons para tipo test, textarea para desarrollo)
@@ -360,6 +360,13 @@ Respuesta `200 OK`:
 | `exam_type` | `string` | ❌ | `test`, `desarrollo`, `mixto` |
 | `difficulty` | `string` | ❌ | `facil`, `media`, `dificil` |
 | `top_k` | `int` | ❌ | 1–20 (por defecto: 5) |
+
+**Errores comunes:**
+
+| Código | Causa | Solución |
+|--------|-------|----------|
+| `422` | `query` vacío, no se encontró contexto relevante, o contexto vacío al generar | Verifica que el tema tiene temario ingestado |
+| `500` | Qdrant inaccesible o error del LLM durante la generación | Comprueba `docker compose ps` y la clave del LLM |
 
 ---
 
@@ -418,15 +425,16 @@ Respuesta `200 OK`:
 
 ### 5. Pipeline de evaluación de calidad (RAGAS)
 
-**Qué hace:** mide la calidad del sistema RAG con las métricas estándar de RAGAS (faithfulness, answer relevancy, context precision, context recall) y con métricas propias (coherencia, completitud).
+**Qué hace:** mide la calidad del sistema RAG con las métricas estándar de RAGAS (faithfulness, answer relevancy, context precision, context recall) y con métricas propias de dominio jurídico (precisión legal, completitud, claridad, exactitud factual).
 
 ```
 EvalSample (query + contexts + answer + ground_truth)
       │
       ├─▶ RAGASEvaluator        → faithfulness, answer_relevancy,
-      │                           context_precision, context_recall
+      │                           context_precision, context_recall (0–1)
       │
-      └─▶ OposicionesEvaluator  → coherence, completeness (LLM-as-judge)
+      └─▶ OposicionesEvaluator  → legal_precision, completeness,
+                                   clarity, factual_accuracy (1–5, LLM-judge)
 ```
 
 #### Ejecutar la suite de evaluación
@@ -457,14 +465,23 @@ EvalSample(
 
 #### Interpretar los resultados
 
-| Métrica | Rango | Qué mide |
-|---------|-------|----------|
-| `faithfulness` | 0–1 | La respuesta está fundamentada en el contexto |
-| `answer_relevancy` | 0–1 | La respuesta responde la pregunta |
-| `context_precision` | 0–1 | Los chunks recuperados son relevantes |
-| `context_recall` | 0–1 | El contexto cubre la respuesta de referencia |
-| `coherence` | 0–1 | Coherencia y claridad de la respuesta (LLM-judge) |
-| `completeness` | 0–1 | Completitud respecto al ground truth (LLM-judge) |
+**`RAGASEvaluator` — métricas estándar (escala 0–1):**
+
+| Métrica | Qué mide |
+|---------|----------|
+| `faithfulness` | La respuesta está fundamentada en el contexto recuperado |
+| `answer_relevancy` | La respuesta responde la pregunta formulada |
+| `context_precision` | Los chunks recuperados son relevantes para la pregunta |
+| `context_recall` | El contexto recuperado cubre la respuesta de referencia |
+
+**`OposicionesEvaluator` — métricas de dominio (escala 1–5, LLM-as-judge):**
+
+| Métrica | Qué mide |
+|---------|----------|
+| `legal_precision` | Exactitud de referencias legales, números de artículo y normas |
+| `completeness` | Cobertura de todos los aspectos exigibles en el examen |
+| `clarity` | Claridad pedagógica para un opositor |
+| `factual_accuracy` | Exactitud de fechas, cifras y pasos procedimentales |
 
 Los resultados se publican en Langfuse (http://localhost:3000) cuando `LANGFUSE_PUBLIC_KEY` y `LANGFUSE_SECRET_KEY` están configurados.
 
@@ -561,7 +578,7 @@ make clean        # ⚠️ Elimina todos los volúmenes Docker (pérdida de dato
 │   │   ├── exceptions.py       # Jerarquía de excepciones del dominio
 │   │   └── protocols.py        # Protocolos compartidos (interfaces)
 │   ├── infrastructure/
-│   │   ├── llm/                # LiteLLMClient (Anthropic/OpenAI/Ollama)
+│   │   ├── llm/                # LiteLLMClient (Anthropic/OpenAI/Ollama/Groq)
 │   │   ├── storage/            # MinIOStorage
 │   │   └── vector_store/       # QdrantVectorStore
 │   └── frontend/
