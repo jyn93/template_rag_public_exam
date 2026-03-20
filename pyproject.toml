@@ -38,6 +38,7 @@ dependencies = [
     # Frontend
     "streamlit>=1.40.0",
     "pytest>=9.0.2",
+    "rank-bm25>=0.2.2",
 ]
 
 [project.optional-dependencies]
