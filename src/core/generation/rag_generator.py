@@ -17,6 +17,7 @@ __all__ = ["RAGGenerator"]
 
 logger = structlog.get_logger(__name__)
 
+# Maximum characters shown per source chunk in the response (keeps payloads small)
 _SOURCE_PREVIEW_CHARS = 200
 
 
