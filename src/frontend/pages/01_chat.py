@@ -16,7 +16,7 @@ st.caption("Ask questions about your study material and get grounded answers.")
 # ── Session state ─────────────────────────────────────────────────────────────
 
 if "chat_history" not in st.session_state:
-    st.session_state.chat_history: list[dict[str, object]] = []
+    st.session_state.chat_history = []  # list[dict[str, object]]
 
 # ── Sidebar controls ──────────────────────────────────────────────────────────
 
@@ -46,7 +46,7 @@ for message in st.session_state.chat_history:
         st.markdown(str(message["content"]))
         if message["role"] == "assistant" and message.get("sources"):
             with st.expander("📎 Sources", expanded=False):
-                for i, src in enumerate(list(message["sources"]), 1):  # type: ignore[arg-type]
+                for i, src in enumerate(list(message["sources"]), 1):
                     st.markdown(f"**[{i}]** {src}")
 
 # ── Chat input ────────────────────────────────────────────────────────────────
