@@ -348,9 +348,7 @@ class TestIngest:
         original = ConnectionError("qdrant unavailable")
         mock_vector_store.add_documents.side_effect = original
 
-        with pytest.raises(
-            VectorStoreError, match="Failed to index"
-        ) as exc_info:
+        with pytest.raises(VectorStoreError, match="Failed to index") as exc_info:
             await pipeline.ingest(path, subject_name="Law")
 
         assert exc_info.value.__cause__ is original

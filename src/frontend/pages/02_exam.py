@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import cast
+
 import streamlit as st
 
 from src.frontend.api_client import call_exam_evaluate_api, call_exam_generate_api
@@ -23,13 +25,13 @@ st.caption(
 # ── Session state ─────────────────────────────────────────────────────────────
 
 if "exam_data" not in st.session_state:
-    st.session_state.exam_data: dict[str, object] | None = None
+    st.session_state.exam_data = None  # dict[str, object] | None
 if "exam_sources" not in st.session_state:
-    st.session_state.exam_sources: list[str] = []
+    st.session_state.exam_sources = []  # list[str]
 if "student_answers" not in st.session_state:
-    st.session_state.student_answers: dict[str, str] = {}
+    st.session_state.student_answers = {}  # dict[str, str]
 if "evaluations" not in st.session_state:
-    st.session_state.evaluations: dict[str, dict[str, object]] = {}
+    st.session_state.evaluations = {}  # dict[str, dict[str, object]]
 
 # ── Sidebar controls ──────────────────────────────────────────────────────────
 
@@ -108,7 +110,7 @@ if submitted:
 
 if st.session_state.exam_data:
     exam = st.session_state.exam_data
-    questions: list[dict[str, object]] = list(exam.get("questions", []))  # type: ignore[arg-type]
+    questions = cast(list[dict[str, object]], exam.get("questions", []))
 
     if not questions:
         st.warning("The exam was generated but contains no questions.")
@@ -124,7 +126,7 @@ if st.session_state.exam_data:
             q_id = str(q.get("id", ""))
             q_text = str(q.get("question", ""))
             q_type = str(q.get("type", ""))
-            options: list[str] = list(q.get("options", []))  # type: ignore[arg-type]
+            options = cast(list[str], q.get("options", []))
             correct = str(q.get("correct_answer", ""))
 
             with st.container(border=True):
@@ -157,8 +159,8 @@ if st.session_state.exam_data:
                     score = ev.get("score", 0)
                     is_correct = ev.get("is_correct", False)
                     feedback = ev.get("feedback", "")
-                    missing = list(ev.get("missing_points", []))  # type: ignore[arg-type]
-                    strengths = list(ev.get("strengths", []))  # type: ignore[arg-type]
+                    missing = list(ev.get("missing_points", []))
+                    strengths = list(ev.get("strengths", []))
 
                     if is_correct:
                         st.success(f"✅ Score: {score}/10 — {feedback}")
