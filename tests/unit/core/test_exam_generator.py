@@ -205,6 +205,12 @@ class TestExtractJson:
         result = ExamGenerator._extract_json("{not valid json}")
         assert result == {"questions": []}
 
+    def test_skips_invalid_brace_block_and_finds_valid_one(self):
+        """When multiple {...} blocks exist, the first valid JSON is returned."""
+        raw = 'Bad: {not valid} Good: {"questions": []}'
+        result = ExamGenerator._extract_json(raw)
+        assert result == {"questions": []}
+
     def test_extracts_nested_json(self):
         """Nested JSON structures are parsed correctly."""
         data = {"questions": [{"id": 1, "options": {"A": "opt1"}}]}

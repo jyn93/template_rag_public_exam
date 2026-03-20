@@ -3,8 +3,7 @@
 from __future__ import annotations
 
 import json
-import re
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 import structlog
 
@@ -164,17 +163,22 @@ class ExamGenerator(Generator):
         """
         # 1. Try direct parse
         try:
-            return json.loads(raw)  # type: ignore[return-value]
+            return cast(dict[str, object], json.loads(raw))
         except json.JSONDecodeError:
             pass
 
-        # 2. Regex fallback: find the first {...} block (handles markdown fences)
-        match = re.search(r"\{.*\}", raw, re.DOTALL)
-        if match:
+        # 2. Incremental fallback: scan for the first valid JSON object starting
+        #    at each '{' position.  This avoids greedy regex over-matching when
+        #    multiple brace groups exist (e.g. "Error: {bad} Valid: {...}").
+        decoder = json.JSONDecoder()
+        for i, ch in enumerate(raw):
+            if ch != "{":
+                continue
             try:
-                return json.loads(match.group())  # type: ignore[return-value]
+                obj, _ = decoder.raw_decode(raw, i)
+                return cast(dict[str, object], obj)
             except json.JSONDecodeError:
-                pass
+                continue
 
         logger.warning("exam_json_parse_failed", raw_preview=raw[:100])
         return {"questions": []}
