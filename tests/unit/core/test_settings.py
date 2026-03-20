@@ -39,6 +39,7 @@ class TestSettings:
         assert LLMProvider.ANTHROPIC == "anthropic"
         assert LLMProvider.OPENAI == "openai"
         assert LLMProvider.OLLAMA == "ollama"
+        assert LLMProvider.GROQ == "groq"
 
     def test_retriever_type_enum_values(self) -> None:
         """Verify RetrieverType enum contains expected values."""
@@ -47,7 +48,12 @@ class TestSettings:
 
     @pytest.mark.parametrize(
         "provider",
-        [LLMProvider.ANTHROPIC, LLMProvider.OPENAI, LLMProvider.OLLAMA],
+        [
+            LLMProvider.ANTHROPIC,
+            LLMProvider.OPENAI,
+            LLMProvider.OLLAMA,
+            LLMProvider.GROQ,
+        ],
     )
     def test_all_providers_accepted(self, provider: LLMProvider) -> None:
         """Verify all LLM providers are accepted by Settings."""
@@ -56,3 +62,16 @@ class TestSettings:
             llm_provider=provider,
         )
         assert settings.llm_provider == provider
+
+    def test_groq_api_key_default_is_empty(self) -> None:
+        """Verify groq_api_key defaults to empty string."""
+        settings = Settings(_env_file=None)  # type: ignore[call-arg]
+        assert settings.groq_api_key == ""
+
+    def test_groq_api_key_accepted_via_constructor(self) -> None:
+        """Verify groq_api_key can be set programmatically."""
+        settings = Settings(
+            _env_file=None,  # type: ignore[call-arg]
+            groq_api_key="gsk_test123",
+        )
+        assert settings.groq_api_key == "gsk_test123"

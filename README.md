@@ -476,12 +476,13 @@ Copia `.env.example` a `.env` y ajusta los valores. Las variables marcadas con �
 
 | Variable | Por defecto | ✅ | Descripción |
 |----------|-------------|---|-------------|
-| `LLM_PROVIDER` | `anthropic` | | Proveedor LLM: `anthropic`, `openai`, `ollama` |
+| `LLM_PROVIDER` | `anthropic` | | Proveedor LLM: `anthropic`, `openai`, `ollama`, `groq` |
 | `LLM_MODEL` | `claude-3-5-sonnet-20241022` | | Identificador del modelo |
 | `LLM_TEMPERATURE` | `0.1` | | Temperatura de sampling (0 = determinista) |
 | `ANTHROPIC_API_KEY` | — | ✅* | Requerida si `LLM_PROVIDER=anthropic` |
 | `OPENAI_API_KEY` | — | ✅ | Siempre necesaria (embeddings `text-embedding-3-small`) |
 | `OLLAMA_BASE_URL` | `http://localhost:11434` | | URL de Ollama si `LLM_PROVIDER=ollama` |
+| `GROQ_API_KEY` | — | ✅* | Requerida si `LLM_PROVIDER=groq` |
 | `EMBEDDING_MODEL` | `text-embedding-3-small` | | Modelo de embeddings de OpenAI |
 | `EMBEDDING_DIM` | `1536` | | Dimensión del vector (debe coincidir con el modelo) |
 | `QDRANT_URL` | `http://localhost:6333` | | URL del servidor Qdrant |
@@ -500,6 +501,8 @@ Copia `.env.example` a `.env` y ajusta los valores. Las variables marcadas con �
 | `LANGFUSE_SECRET_KEY` | — | | Clave secreta de proyecto Langfuse |
 
 > **Nota Ollama:** para usar modelos locales con Ollama, configura `LLM_PROVIDER=ollama` y `OLLAMA_BASE_URL=http://localhost:11434`. Los embeddings siguen usando OpenAI, por lo que `OPENAI_API_KEY` sigue siendo necesaria.
+
+> **Nota Groq:** para usar la inferencia rápida de Groq, configura `LLM_PROVIDER=groq`, `GROQ_API_KEY=gsk_...` y el modelo con prefijo `groq/`, por ejemplo `LLM_MODEL=groq/llama-3.3-70b-versatile`. Los embeddings siguen usando OpenAI.
 
 ---
 
