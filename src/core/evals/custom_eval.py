@@ -118,10 +118,8 @@ class OposicionesEvaluator(Evaluator):
         summary = self._summarise(per_sample)
         logger.info("oposiciones_eval_complete", summary=summary)
 
-        return EvalResult(
-            scores={"per_sample": cast(object, per_sample)},
-            summary=summary,
-        )
+        scores: dict[str, object] = {"per_sample": per_sample}
+        return EvalResult(scores=scores, summary=summary)
 
     async def _judge_sample(self, sample: EvalSample) -> dict[str, object]:
         """Call the LLM judge on a single sample.

@@ -116,36 +116,6 @@ class TestRAGASEvaluator:
         with pytest.raises(ValueError, match="samples"):
             await ev.evaluate([])
 
-    async def test_returns_eval_result(self):
-        """evaluate() returns an EvalResult when RAGAS succeeds."""
-        mock_scores = MagicMock()
-        mock_df = MagicMock()
-        mock_df.to_dict.return_value = {"faithfulness": {0: 0.9}}
-        mock_df.__getitem__ = lambda self, key: MagicMock(mean=lambda: 0.9)
-        mock_df.columns = list(RAGASEvaluator.METRIC_NAMES)
-        mock_scores.to_pandas.return_value = mock_df
-        mock_scores.to_pandas.return_value.mean = MagicMock(return_value=0.9)
-
-        mock_dataset = MagicMock()
-        mock_dataset_class = MagicMock(return_value=mock_dataset)
-        mock_dataset_class.from_list = MagicMock(return_value=mock_dataset)
-
-        with (
-            patch(
-                "src.core.evals.ragas_eval.RAGASEvaluator.evaluate.__wrapped__"
-                if hasattr(RAGASEvaluator.evaluate, "__wrapped__")
-                else "builtins.__import__",
-            )
-            if False
-            else patch.object(RAGASEvaluator, "evaluate")
-        ) as _:
-            pass  # Structural test — see integration test notes below
-
-        # Verify the evaluator correctly raises for empty input (no RAGAS dependency)
-        ev = RAGASEvaluator()
-        with pytest.raises(ValueError, match="samples"):
-            await ev.evaluate([])
-
     async def test_metric_names_constant(self):
         """METRIC_NAMES tuple contains expected metric identifiers."""
         assert "faithfulness" in RAGASEvaluator.METRIC_NAMES
@@ -165,10 +135,8 @@ class TestRAGASEvaluatorWithMocks:
     """Tests for RAGASEvaluator with fully mocked RAGAS library."""
 
     @staticmethod
-    def _patch_ragas(metric_val: float = 0.8):
-        """Context manager that patches all ragas/datasets lazy imports."""
-        import sys
-
+    def _ragas_modules(metric_val: float = 0.8) -> dict:
+        """Build a sys.modules patch dict for ragas/datasets lazy imports."""
         import pandas as pd
 
         df = pd.DataFrame({name: [metric_val] for name in RAGASEvaluator.METRIC_NAMES})
@@ -188,47 +156,28 @@ class TestRAGASEvaluatorWithMocks:
         fake_datasets.Dataset = MagicMock()
         fake_datasets.Dataset.from_list = MagicMock(return_value=MagicMock())
 
-        modules_to_patch = {
+        return {
             "ragas": fake_ragas,
             "ragas.metrics": fake_ragas_metrics,
             "datasets": fake_datasets,
         }
-        saved = {k: sys.modules.get(k) for k in modules_to_patch}
-        sys.modules.update(modules_to_patch)
-        return saved, modules_to_patch
-
-    @staticmethod
-    def _restore_modules(saved: dict) -> None:
-        import sys
-
-        for k, v in saved.items():
-            if v is None:
-                sys.modules.pop(k, None)
-            else:
-                sys.modules[k] = v
 
     async def test_evaluate_returns_eval_result(self):
         """evaluate() returns EvalResult with scores and summary."""
-        saved, _ = self._patch_ragas(0.8)
-        try:
+        with patch.dict("sys.modules", self._ragas_modules(0.8)):
             ev = RAGASEvaluator()
             result = await ev.evaluate([make_sample()])
             assert isinstance(result, EvalResult)
             assert "faithfulness_mean" in result.summary
-        finally:
-            self._restore_modules(saved)
 
     async def test_summary_contains_means(self):
         """Summary contains _mean keys for all RAGAS metric names."""
-        saved, _ = self._patch_ragas(0.75)
-        try:
+        with patch.dict("sys.modules", self._ragas_modules(0.75)):
             ev = RAGASEvaluator()
             result = await ev.evaluate([make_sample()])
             for name in RAGASEvaluator.METRIC_NAMES:
                 assert f"{name}_mean" in result.summary
                 assert result.summary[f"{name}_mean"] == pytest.approx(0.75)
-        finally:
-            self._restore_modules(saved)
 
 
 # ── TestOposicionesEvaluatorInit ──────────────────────────────────────────────
