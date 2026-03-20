@@ -139,7 +139,9 @@ class IngestionPipeline:
         try:
             await self._vector_store.add_documents(chunks)
         except Exception as exc:
-            raise VectorStoreError(f"Failed to index chunks for '{path.name}'") from exc
+            raise VectorStoreError(
+                f"Failed to index {len(chunks)} chunks for '{path.name}'"
+            ) from exc
 
         logger.info(
             "ingestion_complete",
