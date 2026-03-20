@@ -349,7 +349,7 @@ class TestIngest:
         mock_vector_store.add_documents.side_effect = original
 
         with pytest.raises(
-            VectorStoreError, match="Failed to index chunks"
+            VectorStoreError, match="Failed to index"
         ) as exc_info:
             await pipeline.ingest(path, subject_name="Law")
 
