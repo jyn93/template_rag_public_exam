@@ -117,6 +117,9 @@ class IngestionPipeline:
         except IngestionError:
             raise
         except Exception as exc:
+            logger.error(
+                "ingestion_load_unexpected_error", file=path.name, error=str(exc)
+            )
             raise IngestionError(
                 f"Unexpected error loading '{path.name}': {exc}"
             ) from exc
