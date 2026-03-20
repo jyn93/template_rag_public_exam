@@ -97,9 +97,7 @@ class QdrantVectorStore(VectorStore):
                 f"Failed to ensure collection '{self._collection_name}': {exc}"
             ) from exc
 
-    async def add_documents(
-        self, documents: list[Document]
-    ) -> dict[str, object]:
+    async def add_documents(self, documents: list[Document]) -> dict[str, object]:
         """Embed and upsert documents into the Qdrant collection.
 
         Each document is assigned a deterministic UUID derived from its
@@ -168,9 +166,7 @@ class QdrantVectorStore(VectorStore):
 
         return {"inserted": len(points), "collection": self._collection_name}
 
-    async def search(
-        self, query: str, top_k: int
-    ) -> list[RetrievalResult]:
+    async def search(self, query: str, top_k: int) -> list[RetrievalResult]:
         """Embed *query* and return the *top_k* most similar chunks.
 
         Args:
@@ -187,14 +183,12 @@ class QdrantVectorStore(VectorStore):
         try:
             query_vector = await self._embedding_model.aget_query_embedding(query)
         except Exception as exc:
-            raise VectorStoreError(
-                f"Failed to embed query '{query}': {exc}"
-            ) from exc
+            raise VectorStoreError(f"Failed to embed query '{query}': {exc}") from exc
 
         try:
-            scored_points = await self._client.search(
+            query_response = await self._client.query_points(
                 collection_name=self._collection_name,
-                query_vector=query_vector,
+                query=query_vector,
                 limit=top_k,
             )
         except Exception as exc:
@@ -204,7 +198,7 @@ class QdrantVectorStore(VectorStore):
 
         results = [
             RetrievalResult(
-                content=str(point.payload.get(_CONTENT_PAYLOAD_KEY, "")),
+                content=str((point.payload or {}).get(_CONTENT_PAYLOAD_KEY, "")),
                 score=point.score,
                 metadata={
                     k: v
@@ -212,10 +206,10 @@ class QdrantVectorStore(VectorStore):
                     if k not in (_CONTENT_PAYLOAD_KEY, _DOC_ID_PAYLOAD_KEY)
                 },
                 doc_id=str(
-                    point.payload.get(_DOC_ID_PAYLOAD_KEY, str(point.id))
+                    (point.payload or {}).get(_DOC_ID_PAYLOAD_KEY, str(point.id))
                 ),
             )
-            for point in scored_points
+            for point in query_response.points
         ]
 
         logger.info(

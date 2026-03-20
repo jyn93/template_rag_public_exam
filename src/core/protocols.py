@@ -23,9 +23,7 @@ class VectorIndexProtocol(Protocol):
     Any object that implements :meth:`add_documents` satisfies this protocol.
     """
 
-    async def add_documents(
-        self, documents: list[Document]
-    ) -> dict[str, object]:
+    async def add_documents(self, documents: list[Document]) -> dict[str, object]:
         """Embed and persist a list of documents in the vector store.
 
         Args:
@@ -43,9 +41,7 @@ class VectorSearchProtocol(Protocol):
     Any object that implements :meth:`search` satisfies this protocol.
     """
 
-    async def search(
-        self, query: str, top_k: int
-    ) -> list[RetrievalResult]:
+    async def search(self, query: str, top_k: int) -> list[RetrievalResult]:
         """Search the vector store for chunks semantically similar to *query*.
 
         Args:

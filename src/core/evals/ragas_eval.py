@@ -70,9 +70,9 @@ class RAGASEvaluator(Evaluator):
             raise ValueError("samples must not be empty.")
 
         # Lazy imports to keep startup fast in non-eval environments
-        from datasets import Dataset  # type: ignore[import-untyped]
-        from ragas import evaluate as ragas_evaluate  # type: ignore[import-untyped]
-        from ragas.metrics import (  # type: ignore[import-untyped]
+        from datasets import Dataset
+        from ragas import evaluate as ragas_evaluate
+        from ragas.metrics import (
             answer_relevancy,
             context_precision,
             context_recall,

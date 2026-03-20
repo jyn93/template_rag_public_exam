@@ -143,9 +143,10 @@ class ExamGenerator(Generator):
         """
         data = self._extract_json(raw)
         sources = input.context[:_MAX_SOURCES]
+        questions = cast(list[object], data.get("questions", []))
         logger.info(
             "exam_generation_complete",
-            questions_parsed=len(data.get("questions", [])),
+            questions_parsed=len(questions),
         )
         return GenerationOutput(content=data, sources=sources)
 

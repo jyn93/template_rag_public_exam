@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from qdrant_client.models import ScoredPoint
@@ -50,6 +50,13 @@ def make_scored_point(
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 
 
+def _make_query_response(points: list[ScoredPoint]) -> MagicMock:
+    """Wrap a list of ScoredPoints in a QueryResponse-like mock."""
+    response = MagicMock()
+    response.points = points
+    return response
+
+
 @pytest.fixture
 def mock_qdrant_client() -> AsyncMock:
     """Async Qdrant client mock."""
@@ -57,7 +64,9 @@ def mock_qdrant_client() -> AsyncMock:
     client.collection_exists = AsyncMock(return_value=True)
     client.create_collection = AsyncMock()
     client.upsert = AsyncMock()
-    client.search = AsyncMock(return_value=[make_scored_point()])
+    client.query_points = AsyncMock(
+        return_value=_make_query_response([make_scored_point()])
+    )
     return client
 
 
@@ -97,9 +106,7 @@ class TestEnsureCollection:
 
         mock_qdrant_client.create_collection.assert_not_called()
 
-    async def test_creates_collection_when_missing(
-        self, store, mock_qdrant_client
-    ):
+    async def test_creates_collection_when_missing(self, store, mock_qdrant_client):
         """create_collection IS called when the collection does not exist."""
         mock_qdrant_client.collection_exists.return_value = False
 
@@ -107,9 +114,7 @@ class TestEnsureCollection:
 
         mock_qdrant_client.create_collection.assert_called_once()
 
-    async def test_create_collection_uses_correct_name(
-        self, store, mock_qdrant_client
-    ):
+    async def test_create_collection_uses_correct_name(self, store, mock_qdrant_client):
         """create_collection is called with the configured collection name."""
         mock_qdrant_client.collection_exists.return_value = False
 
@@ -206,9 +211,7 @@ class TestAddDocuments:
         with pytest.raises(VectorStoreError, match="Qdrant upsert failed"):
             await store.add_documents([make_document()])
 
-    async def test_document_content_stored_in_payload(
-        self, store, mock_qdrant_client
-    ):
+    async def test_document_content_stored_in_payload(self, store, mock_qdrant_client):
         """Each upserted point's payload contains the document content."""
         doc = make_document("d1", "Important legal text")
 
@@ -219,8 +222,7 @@ class TestAddDocuments:
         points_list = next((a for a in all_args if isinstance(a, list)), None)
         assert points_list is not None
         assert any(
-            p.payload.get("content") == "Important legal text"
-            for p in points_list
+            p.payload.get("content") == "Important legal text" for p in points_list
         )
 
 
@@ -237,37 +239,31 @@ class TestSearch:
         assert isinstance(results, list)
         assert all(isinstance(r, RetrievalResult) for r in results)
 
-    async def test_result_content_matches_payload(
-        self, store, mock_qdrant_client
-    ):
+    async def test_result_content_matches_payload(self, store, mock_qdrant_client):
         """RetrievalResult.content is extracted from the Qdrant payload."""
-        mock_qdrant_client.search.return_value = [
-            make_scored_point(content="Specific content here")
-        ]
+        mock_qdrant_client.query_points.return_value = _make_query_response(
+            [make_scored_point(content="Specific content here")]
+        )
 
         results = await store.search("query", top_k=1)
 
         assert results[0].content == "Specific content here"
 
-    async def test_result_score_matches_scored_point(
-        self, store, mock_qdrant_client
-    ):
+    async def test_result_score_matches_scored_point(self, store, mock_qdrant_client):
         """RetrievalResult.score equals the ScoredPoint's score."""
-        mock_qdrant_client.search.return_value = [
-            make_scored_point(score=0.87)
-        ]
+        mock_qdrant_client.query_points.return_value = _make_query_response(
+            [make_scored_point(score=0.87)]
+        )
 
         results = await store.search("query", top_k=1)
 
         assert results[0].score == pytest.approx(0.87)
 
-    async def test_result_doc_id_from_payload(
-        self, store, mock_qdrant_client
-    ):
+    async def test_result_doc_id_from_payload(self, store, mock_qdrant_client):
         """RetrievalResult.doc_id is taken from the 'doc_id' payload key."""
-        mock_qdrant_client.search.return_value = [
-            make_scored_point(doc_id="parent-1_chunk_0")
-        ]
+        mock_qdrant_client.query_points.return_value = _make_query_response(
+            [make_scored_point(doc_id="parent-1_chunk_0")]
+        )
 
         results = await store.search("query", top_k=1)
 
@@ -277,7 +273,9 @@ class TestSearch:
         self, store, mock_qdrant_client
     ):
         """'content' and 'doc_id' are stripped from RetrievalResult.metadata."""
-        mock_qdrant_client.search.return_value = [make_scored_point()]
+        mock_qdrant_client.query_points.return_value = _make_query_response(
+            [make_scored_point()]
+        )
 
         results = await store.search("query", top_k=1)
 
@@ -288,25 +286,23 @@ class TestSearch:
         self, store, mock_qdrant_client
     ):
         """Payload fields other than content/doc_id appear in metadata."""
-        mock_qdrant_client.search.return_value = [make_scored_point()]
+        mock_qdrant_client.query_points.return_value = _make_query_response(
+            [make_scored_point()]
+        )
 
         results = await store.search("query", top_k=1)
 
         assert results[0].metadata.get("subject") == "Law"
 
-    async def test_empty_results_returns_empty_list(
-        self, store, mock_qdrant_client
-    ):
+    async def test_empty_results_returns_empty_list(self, store, mock_qdrant_client):
         """Empty Qdrant response is returned as an empty list."""
-        mock_qdrant_client.search.return_value = []
+        mock_qdrant_client.query_points.return_value = _make_query_response([])
 
         results = await store.search("obscure query", top_k=5)
 
         assert results == []
 
-    async def test_calls_embedding_model_for_query(
-        self, store, mock_embedding_model
-    ):
+    async def test_calls_embedding_model_for_query(self, store, mock_embedding_model):
         """aget_query_embedding is called once with the exact query string."""
         await store.search("my search query", top_k=5)
 
@@ -314,17 +310,12 @@ class TestSearch:
             "my search query"
         )
 
-    async def test_calls_qdrant_search_with_top_k(
-        self, store, mock_qdrant_client
-    ):
-        """Qdrant client search is called with the correct limit."""
+    async def test_calls_qdrant_search_with_top_k(self, store, mock_qdrant_client):
+        """Qdrant client query_points is called with the correct limit."""
         await store.search("query", top_k=7)
 
-        call_kwargs = mock_qdrant_client.search.call_args[1]
-        assert call_kwargs.get("limit") == 7 or (
-            len(mock_qdrant_client.search.call_args[0]) > 2
-            and mock_qdrant_client.search.call_args[0][2] == 7
-        )
+        call_kwargs = mock_qdrant_client.query_points.call_args.kwargs
+        assert call_kwargs.get("limit") == 7
 
     async def test_raises_vector_store_error_on_embedding_failure(
         self, store, mock_embedding_model
@@ -341,17 +332,15 @@ class TestSearch:
         self, store, mock_qdrant_client
     ):
         """VectorStoreError is raised when Qdrant search fails."""
-        mock_qdrant_client.search.side_effect = ConnectionError("timeout")
+        mock_qdrant_client.query_points.side_effect = ConnectionError("timeout")
 
         with pytest.raises(VectorStoreError, match="Qdrant search failed"):
             await store.search("query", top_k=5)
 
-    async def test_error_chains_original_cause(
-        self, store, mock_qdrant_client
-    ):
+    async def test_error_chains_original_cause(self, store, mock_qdrant_client):
         """The original exception is chained as __cause__ on VectorStoreError."""
         cause = ConnectionError("network error")
-        mock_qdrant_client.search.side_effect = cause
+        mock_qdrant_client.query_points.side_effect = cause
 
         with pytest.raises(VectorStoreError) as exc_info:
             await store.search("query", top_k=5)

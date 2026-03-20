@@ -30,9 +30,7 @@ class VectorStore(ABC):
     """
 
     @abstractmethod
-    async def add_documents(
-        self, documents: list[Document]
-    ) -> dict[str, object]:
+    async def add_documents(self, documents: list[Document]) -> dict[str, object]:
         """Embed and persist documents in the vector store.
 
         Args:
@@ -46,9 +44,7 @@ class VectorStore(ABC):
         """
 
     @abstractmethod
-    async def search(
-        self, query: str, top_k: int
-    ) -> list[RetrievalResult]:
+    async def search(self, query: str, top_k: int) -> list[RetrievalResult]:
         """Return the most semantically similar chunks for *query*.
 
         Args:
