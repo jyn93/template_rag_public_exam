@@ -2,12 +2,9 @@
 
 from src.core.ingestion.base import Document, DocumentLoader
 from src.core.ingestion.pdf_loader import PDFDocumentLoader
-from src.core.ingestion.pipeline import (
-    DocStorageProtocol,
-    IngestionPipeline,
-    VectorStoreProtocol,
-)
+from src.core.ingestion.pipeline import IngestionPipeline
 from src.core.ingestion.txt_loader import TxtDocumentLoader
+from src.core.protocols import DocStorageProtocol, VectorIndexProtocol
 
 __all__ = [
     "DocStorageProtocol",
@@ -16,5 +13,5 @@ __all__ = [
     "IngestionPipeline",
     "PDFDocumentLoader",
     "TxtDocumentLoader",
-    "VectorStoreProtocol",
+    "VectorIndexProtocol",
 ]
