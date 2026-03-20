@@ -9,6 +9,7 @@ import structlog
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from src.api.routers.ingestion import router as ingestion_router
 from src.core.config.settings import get_settings
 
 logger = structlog.get_logger(__name__)
@@ -30,6 +31,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(ingestion_router)
 
 _start_time = time.time()
 
