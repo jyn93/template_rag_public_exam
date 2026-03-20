@@ -101,8 +101,17 @@ class MinIOStorage:
                 path.suffix,
             )
         except S3Error as exc:
+            logger.error(
+                "minio_upload_s3_error", bucket=self._bucket, key=key, error=str(exc)
+            )
             raise StorageError(f"MinIO upload failed for '{path.name}': {exc}") from exc
         except Exception as exc:
+            logger.error(
+                "minio_upload_unexpected_error",
+                bucket=self._bucket,
+                key=key,
+                error=str(exc),
+            )
             raise StorageError(
                 f"Unexpected error uploading '{path.name}' to MinIO"
             ) from exc
