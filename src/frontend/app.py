@@ -2,11 +2,9 @@
 
 from __future__ import annotations
 
-import os
-
 import streamlit as st
 
-API_URL = os.getenv("API_URL", "http://localhost:8000")
+from src.frontend.api_client import API_URL
 
 st.set_page_config(
     page_title="RAG Oposiciones",
