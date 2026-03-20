@@ -24,13 +24,23 @@ from src.infrastructure.vector_store.qdrant_store import QdrantVectorStore
 __all__ = [
     "IngestionPipelineDep",
     "SettingsDep",
+    "get_vector_store",
 ]
 
 SettingsDep = Annotated[Settings, Depends(get_settings)]
 
 
-def _make_vector_store() -> QdrantVectorStore:
-    """Build a fully wired QdrantVectorStore from application settings."""
+def get_vector_store() -> QdrantVectorStore:
+    """Build a fully wired QdrantVectorStore from application settings.
+
+    Declared as a FastAPI dependency so that any endpoint needing the vector
+    store receives the same instance within a single request, avoiding the cost
+    of constructing multiple Qdrant clients and embedding models.
+
+    Returns:
+        Configured :class:`~src.infrastructure.vector_store.qdrant_store\
+            .QdrantVectorStore`.
+    """
     settings = get_settings()
     client = AsyncQdrantClient(url=settings.qdrant_url)
     embedding_model = OpenAIEmbedding(
@@ -45,16 +55,20 @@ def _make_vector_store() -> QdrantVectorStore:
     )
 
 
-def get_ingestion_pipeline() -> IngestionPipeline:
+def get_ingestion_pipeline(
+    vector_store: Annotated[QdrantVectorStore, Depends(get_vector_store)],
+) -> IngestionPipeline:
     """Build and return a fully wired IngestionPipeline.
 
     Constructs concrete infrastructure adapters (QdrantVectorStore, MinIOStorage)
     from application settings and wires them into the pipeline facade.
 
+    Args:
+        vector_store: Injected vector store dependency.
+
     Returns:
         Ready-to-use IngestionPipeline instance.
     """
-    vector_store = _make_vector_store()
     doc_storage = MinIOStorage()
     loaders = [PDFDocumentLoader(), TxtDocumentLoader()]
     return IngestionPipeline(
@@ -77,14 +91,18 @@ def get_llm_client() -> LLMClient:
     )
 
 
-def get_retriever() -> Retriever:
+def get_retriever(
+    vector_store: Annotated[QdrantVectorStore, Depends(get_vector_store)],
+) -> Retriever:
     """Build and return the configured Retriever from settings.
+
+    Args:
+        vector_store: Injected vector store dependency.
 
     Returns:
         Concrete :class:`~src.core.retrieval.base.Retriever` instance
         (Dense or Hybrid depending on settings).
     """
-    vector_store = _make_vector_store()
     return RetrieverFactory.create(vector_store=vector_store)
 
 
