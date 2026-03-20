@@ -97,6 +97,12 @@ async def chat(
             detail=f"Generation failed: {exc}",
         ) from exc
 
+    logger.info(
+        "chat_response",
+        answer_length=len(str(output.content)),
+        sources_count=len(output.sources),
+        tokens_used=output.tokens_used,
+    )
     return ChatResponse(
         answer=str(output.content),
         sources=output.sources,
