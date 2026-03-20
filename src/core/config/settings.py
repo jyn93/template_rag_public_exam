@@ -16,6 +16,7 @@ class LLMProvider(StrEnum):
     ANTHROPIC = "anthropic"
     OPENAI = "openai"
     OLLAMA = "ollama"
+    GROQ = "groq"
 
 
 class RetrieverType(StrEnum):
@@ -47,6 +48,7 @@ class Settings(BaseSettings):
     anthropic_api_key: str = ""
     openai_api_key: str = ""
     ollama_base_url: str = "http://localhost:11434"
+    groq_api_key: str = ""
 
     # ── Embeddings ────────────────────────────────────────────────────────────
     embedding_model: str = "text-embedding-3-small"
