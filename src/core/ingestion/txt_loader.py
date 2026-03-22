@@ -75,6 +75,12 @@ class TxtDocumentLoader(DocumentLoader):
         try:
             content = path.read_text(encoding=self._encoding)
         except UnicodeDecodeError as exc:
+            logger.exception(
+                "txt_decode_failed",
+                file=path.name,
+                encoding=self._encoding,
+                error=str(exc),
+            )
             raise IngestionError(
                 f"Cannot decode '{path.name}' with encoding '{self._encoding}'"
             ) from exc

@@ -112,21 +112,39 @@ class IngestionPipeline:
 
         loader = self._get_loader(path)
 
+        logger.info(
+            "ingestion_start",
+            file=path.name,
+            subject=subject_name,
+            loader=type(loader).__name__,
+        )
+
         try:
             documents = loader.load(path, subject=subject_name)
         except IngestionError:
             raise
         except Exception as exc:
-            logger.error(
+            logger.exception(
                 "ingestion_load_unexpected_error", file=path.name, error=str(exc)
             )
             raise IngestionError(
                 f"Unexpected error loading '{path.name}': {exc}"
             ) from exc
 
+        logger.debug(
+            "ingestion_load_complete",
+            file=path.name,
+            documents_loaded=len(documents),
+        )
+
         try:
             await self._doc_storage.upload(path, subject_name)
+        except StorageError:
+            raise
         except Exception as exc:
+            logger.exception(
+                "ingestion_storage_unexpected_error", file=path.name, error=str(exc)
+            )
             raise StorageError(
                 f"Failed to upload '{path.name}' to object storage"
             ) from exc
@@ -136,9 +154,24 @@ class IngestionPipeline:
 
         chunks = self._chunk_documents(documents)
 
+        logger.debug(
+            "ingestion_chunk_complete",
+            file=path.name,
+            documents=len(documents),
+            chunks=len(chunks),
+        )
+
         try:
             await self._vector_store.add_documents(chunks)
+        except VectorStoreError:
+            raise
         except Exception as exc:
+            logger.exception(
+                "ingestion_index_unexpected_error",
+                file=path.name,
+                chunks=len(chunks),
+                error=str(exc),
+            )
             raise VectorStoreError(
                 f"Failed to index {len(chunks)} chunks for '{path.name}'"
             ) from exc
