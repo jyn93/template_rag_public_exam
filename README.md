@@ -71,7 +71,8 @@ Sistema RAG (Retrieval-Augmented Generation) modular y extensible para preparaci
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/) ≥ 24
 - [uv](https://docs.astral.sh/uv/getting-started/installation/) ≥ 0.5 (gestor de paquetes Python)
 - Python 3.12+
-- Clave API de Anthropic **o** OpenAI (para el LLM y los embeddings)
+- Clave API de Anthropic, OpenAI **o** Groq para el LLM
+- Clave API de OpenAI **o** Ollama instalado localmente para los embeddings
 
 ### Paso 1 — Clonar y configurar el entorno
 
@@ -91,17 +92,32 @@ cp .env.example .env
 
 Edita `.env` y rellena al menos estas variables:
 
+**Opción A — OpenAI para LLM y embeddings (más sencillo):**
+
 ```dotenv
-# Proveedor LLM (anthropic | openai | ollama)
+LLM_PROVIDER=openai
+LLM_MODEL=gpt-4o-mini
+OPENAI_API_KEY=sk-...             # reemplaza con tu clave
+
+EMBEDDING_PROVIDER=openai
+EMBEDDING_MODEL=text-embedding-3-small
+EMBEDDING_DIM=1536
+```
+
+**Opción B — Anthropic como LLM + embeddings locales con Ollama (sin coste de embeddings):**
+
+```dotenv
 LLM_PROVIDER=anthropic
 LLM_MODEL=claude-3-5-sonnet-20241022
 ANTHROPIC_API_KEY=sk-ant-...      # reemplaza con tu clave
 
-# Embeddings (OpenAI siempre, independientemente del LLM)
-OPENAI_API_KEY=sk-...             # necesario para text-embedding-3-small
-EMBEDDING_MODEL=text-embedding-3-small
-EMBEDDING_DIM=1536
+EMBEDDING_PROVIDER=ollama
+OLLAMA_EMBEDDING_MODEL=nomic-embed-text
+EMBEDDING_DIM=768
+OLLAMA_BASE_URL=http://localhost:11434
 ```
+
+> Con la opción B ejecuta `ollama pull nomic-embed-text` antes de ingestar.
 
 El resto de variables tienen valores por defecto válidos para desarrollo local. Consulta la [sección de variables de entorno](#variables-de-entorno) para la referencia completa.
 
@@ -497,11 +513,13 @@ Copia `.env.example` a `.env` y ajusta los valores. Las variables marcadas con �
 | `LLM_MODEL` | `claude-3-5-sonnet-20241022` | | Identificador del modelo |
 | `LLM_TEMPERATURE` | `0.1` | | Temperatura de sampling (0 = determinista) |
 | `ANTHROPIC_API_KEY` | — | ✅* | Requerida si `LLM_PROVIDER=anthropic` |
-| `OPENAI_API_KEY` | — | ✅ | Siempre necesaria (embeddings `text-embedding-3-small`) |
-| `OLLAMA_BASE_URL` | `http://localhost:11434` | | URL de Ollama si `LLM_PROVIDER=ollama` |
+| `OPENAI_API_KEY` | — | ✅* | Requerida si `LLM_PROVIDER=openai` o `EMBEDDING_PROVIDER=openai` |
+| `OLLAMA_BASE_URL` | `http://localhost:11434` | | URL de Ollama (LLM y/o embeddings) |
 | `GROQ_API_KEY` | — | ✅* | Requerida si `LLM_PROVIDER=groq` |
-| `EMBEDDING_MODEL` | `text-embedding-3-small` | | Modelo de embeddings de OpenAI |
-| `EMBEDDING_DIM` | `1536` | | Dimensión del vector (debe coincidir con el modelo) |
+| `EMBEDDING_PROVIDER` | `openai` | | Proveedor de embeddings: `openai` u `ollama` |
+| `EMBEDDING_MODEL` | `text-embedding-3-small` | | Modelo OpenAI (cuando `EMBEDDING_PROVIDER=openai`) |
+| `EMBEDDING_DIM` | `1536` | | Dimensión del vector — debe coincidir con el modelo (`text-embedding-3-small`→1536, `nomic-embed-text`→768) |
+| `OLLAMA_EMBEDDING_MODEL` | `nomic-embed-text` | | Modelo Ollama (cuando `EMBEDDING_PROVIDER=ollama`) |
 | `QDRANT_URL` | `http://localhost:6333` | | URL del servidor Qdrant |
 | `QDRANT_COLLECTION` | `oposiciones_temario` | | Nombre de la colección vectorial |
 | `DATABASE_URL` | `postgresql+asyncpg://...` | | URL de conexión PostgreSQL |
@@ -517,7 +535,9 @@ Copia `.env.example` a `.env` y ajusta los valores. Las variables marcadas con �
 | `LANGFUSE_PUBLIC_KEY` | — | | Clave pública de proyecto Langfuse |
 | `LANGFUSE_SECRET_KEY` | — | | Clave secreta de proyecto Langfuse |
 
-> **Nota Ollama:** para usar modelos locales con Ollama, configura `LLM_PROVIDER=ollama` y `OLLAMA_BASE_URL=http://localhost:11434`. Los embeddings siguen usando OpenAI, por lo que `OPENAI_API_KEY` sigue siendo necesaria.
+> **Nota Ollama (LLM):** para usar modelos locales de *generación* con Ollama, configura `LLM_PROVIDER=ollama` y `OLLAMA_BASE_URL=http://localhost:11434`.
+>
+> **Nota Ollama (embeddings):** para usar embeddings locales gratuitos, configura `EMBEDDING_PROVIDER=ollama`, `OLLAMA_EMBEDDING_MODEL=nomic-embed-text` y `EMBEDDING_DIM=768`. Ejecuta previamente `ollama pull nomic-embed-text`. Con esta configuración `OPENAI_API_KEY` no es necesaria si tampoco usas OpenAI como LLM.
 
 > **Nota Groq:** para usar la inferencia rápida de Groq, configura `LLM_PROVIDER=groq`, `GROQ_API_KEY=gsk_...` y el modelo con prefijo `groq/`, por ejemplo `LLM_MODEL=groq/llama-3.3-70b-versatile`. Los embeddings siguen usando OpenAI.
 

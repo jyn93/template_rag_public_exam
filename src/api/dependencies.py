@@ -5,10 +5,12 @@ from __future__ import annotations
 from typing import Annotated
 
 from fastapi import Depends
+from llama_index.core.embeddings import BaseEmbedding
+from llama_index.embeddings.ollama import OllamaEmbedding
 from llama_index.embeddings.openai import OpenAIEmbedding
 from qdrant_client import AsyncQdrantClient
 
-from src.core.config.settings import Settings, get_settings
+from src.core.config.settings import EmbeddingProvider, Settings, get_settings
 from src.core.generation.evaluator import AnswerEvaluator
 from src.core.generation.rag_generator import RAGGenerator
 from src.core.ingestion.pdf_loader import PDFDocumentLoader
@@ -30,6 +32,31 @@ __all__ = [
 SettingsDep = Annotated[Settings, Depends(get_settings)]
 
 
+def _build_embedding_model(settings: Settings) -> BaseEmbedding:
+    """Instantiate the configured embedding model.
+
+    Selects between :class:`~llama_index.embeddings.openai.OpenAIEmbedding`
+    and :class:`~llama_index.embeddings.ollama.OllamaEmbedding` based on
+    ``settings.embedding_provider``.
+
+    Args:
+        settings: Application settings instance.
+
+    Returns:
+        A LlamaIndex :class:`~llama_index.core.embeddings.BaseEmbedding`
+        implementation ready for use.
+    """
+    if settings.embedding_provider == EmbeddingProvider.OLLAMA:
+        return OllamaEmbedding(
+            model_name=settings.ollama_embedding_model,
+            base_url=settings.ollama_base_url,
+        )
+    return OpenAIEmbedding(
+        model=settings.embedding_model,
+        api_key=settings.openai_api_key,
+    )
+
+
 def get_vector_store() -> QdrantVectorStore:
     """Build a fully wired QdrantVectorStore from application settings.
 
@@ -37,16 +64,17 @@ def get_vector_store() -> QdrantVectorStore:
     store receives the same instance within a single request, avoiding the cost
     of constructing multiple Qdrant clients and embedding models.
 
+    The embedding model is selected based on ``EMBEDDING_PROVIDER``:
+    ``openai`` (default) uses :class:`~llama_index.embeddings.openai.OpenAIEmbedding`;
+    ``ollama`` uses :class:`~llama_index.embeddings.ollama.OllamaEmbedding`.
+
     Returns:
         Configured :class:`~src.infrastructure.vector_store.qdrant_store\
             .QdrantVectorStore`.
     """
     settings = get_settings()
     client = AsyncQdrantClient(url=settings.qdrant_url)
-    embedding_model = OpenAIEmbedding(
-        model=settings.embedding_model,
-        api_key=settings.openai_api_key,
-    )
+    embedding_model = _build_embedding_model(settings)
     return QdrantVectorStore(
         client=client,
         embedding_model=embedding_model,

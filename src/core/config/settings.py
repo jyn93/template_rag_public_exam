@@ -7,7 +7,13 @@ from functools import lru_cache
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-__all__ = ["Settings", "LLMProvider", "RetrieverType", "get_settings"]
+__all__ = [
+    "EmbeddingProvider",
+    "LLMProvider",
+    "RetrieverType",
+    "Settings",
+    "get_settings",
+]
 
 
 class LLMProvider(StrEnum):
@@ -17,6 +23,13 @@ class LLMProvider(StrEnum):
     OPENAI = "openai"
     OLLAMA = "ollama"
     GROQ = "groq"
+
+
+class EmbeddingProvider(StrEnum):
+    """Supported embedding providers."""
+
+    OPENAI = "openai"
+    OLLAMA = "ollama"
 
 
 class RetrieverType(StrEnum):
@@ -51,8 +64,12 @@ class Settings(BaseSettings):
     groq_api_key: str = ""
 
     # ── Embeddings ────────────────────────────────────────────────────────────
+    embedding_provider: EmbeddingProvider = EmbeddingProvider.OPENAI
+    # OpenAI embedding model (used when embedding_provider=openai)
     embedding_model: str = "text-embedding-3-small"
     embedding_dim: int = 1536
+    # Ollama embedding model (used when embedding_provider=ollama)
+    ollama_embedding_model: str = "nomic-embed-text"
 
     # ── Qdrant ────────────────────────────────────────────────────────────────
     qdrant_url: str = "http://localhost:6333"
