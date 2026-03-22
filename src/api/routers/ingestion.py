@@ -93,19 +93,21 @@ async def ingest_document(
             detail=str(exc),
         ) from exc
     except IngestionError as exc:
-        logger.error("ingestion_failed", filename=original_name, error=str(exc))
+        logger.exception("ingestion_failed", filename=original_name, error=str(exc))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Ingestion failed: {exc}",
         ) from exc
     except StorageError as exc:
-        logger.error("storage_failed", filename=original_name, error=str(exc))
+        logger.exception("storage_failed", filename=original_name, error=str(exc))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Storage upload failed: {exc}",
         ) from exc
     except VectorStoreError as exc:
-        logger.error("vector_store_failed", filename=original_name, error=str(exc))
+        logger.exception(
+            "vector_store_failed", filename=original_name, error=str(exc)
+        )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Vector store indexing failed: {exc}",

@@ -122,6 +122,9 @@ async def generate_exam(
     try:
         results = await retriever.retrieve(body.query, top_k=body.top_k)
     except (RetrievalError, ValueError) as exc:
+        logger.exception(
+            "exam_retrieval_failed", query=body.query[:80], error=str(exc)
+        )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Retrieval failed: {exc}",
@@ -149,11 +152,17 @@ async def generate_exam(
     try:
         output = await generator.generate(gen_input)
     except ValueError as exc:
+        logger.exception(
+            "exam_generation_invalid_input", query=body.query[:80], error=str(exc)
+        )
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=f"Invalid generation input: {exc}",
         ) from exc
     except GenerationError as exc:
+        logger.exception(
+            "exam_generation_failed", query=body.query[:80], error=str(exc)
+        )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Exam generation failed: {exc}",
@@ -198,6 +207,9 @@ async def evaluate_answer(
             student_answer=body.student_answer,
         )
     except GenerationError as exc:
+        logger.exception(
+            "exam_evaluation_failed", question=body.question[:80], error=str(exc)
+        )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Evaluation failed: {exc}",

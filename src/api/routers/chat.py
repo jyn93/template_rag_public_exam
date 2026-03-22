@@ -72,6 +72,7 @@ async def chat(
     try:
         results = await retriever.retrieve(body.query, top_k=body.top_k)
     except (RetrievalError, ValueError) as exc:
+        logger.exception("chat_retrieval_failed", query=body.query[:80], error=str(exc))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Retrieval failed: {exc}",
@@ -92,6 +93,9 @@ async def chat(
     try:
         output: GenerationOutput = await generator.generate(gen_input)
     except (GenerationError, ValueError) as exc:
+        logger.exception(
+            "chat_generation_failed", query=body.query[:80], error=str(exc)
+        )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Generation failed: {exc}",
