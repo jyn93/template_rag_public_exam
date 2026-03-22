@@ -92,7 +92,19 @@ class QdrantVectorStore(VectorStore):
                     collection=self._collection_name,
                     dim=self._embedding_dim,
                 )
+            else:
+                logger.debug(
+                    "qdrant_collection_exists",
+                    collection=self._collection_name,
+                )
+        except VectorStoreError:
+            raise
         except Exception as exc:
+            logger.exception(
+                "qdrant_ensure_collection_failed",
+                collection=self._collection_name,
+                error=str(exc),
+            )
             raise VectorStoreError(
                 f"Failed to ensure collection '{self._collection_name}': {exc}"
             ) from exc
@@ -121,12 +133,23 @@ class QdrantVectorStore(VectorStore):
 
         await self._ensure_collection()
 
+        logger.debug(
+            "qdrant_embedding_batch_start",
+            collection=self._collection_name,
+            documents_count=len(documents),
+        )
         try:
             texts = [doc.content for doc in documents]
             vectors = await self._embedding_model.aget_text_embedding_batch(
                 texts, show_progress=False
             )
         except Exception as exc:
+            logger.exception(
+                "qdrant_embedding_batch_failed",
+                collection=self._collection_name,
+                documents_count=len(documents),
+                error=str(exc),
+            )
             raise VectorStoreError(
                 f"Embedding batch failed for {len(documents)} documents: {exc}"
             ) from exc
@@ -154,6 +177,12 @@ class QdrantVectorStore(VectorStore):
                 points=points,
             )
         except Exception as exc:
+            logger.exception(
+                "qdrant_upsert_failed",
+                collection=self._collection_name,
+                points_count=len(points),
+                error=str(exc),
+            )
             raise VectorStoreError(
                 f"Qdrant upsert failed for collection '{self._collection_name}': {exc}"
             ) from exc
@@ -183,6 +212,11 @@ class QdrantVectorStore(VectorStore):
         try:
             query_vector = await self._embedding_model.aget_query_embedding(query)
         except Exception as exc:
+            logger.exception(
+                "qdrant_query_embedding_failed",
+                collection=self._collection_name,
+                error=str(exc),
+            )
             raise VectorStoreError(f"Failed to embed query '{query}': {exc}") from exc
 
         try:
@@ -192,6 +226,12 @@ class QdrantVectorStore(VectorStore):
                 limit=top_k,
             )
         except Exception as exc:
+            logger.exception(
+                "qdrant_search_failed",
+                collection=self._collection_name,
+                top_k=top_k,
+                error=str(exc),
+            )
             raise VectorStoreError(
                 f"Qdrant search failed in collection '{self._collection_name}': {exc}"
             ) from exc

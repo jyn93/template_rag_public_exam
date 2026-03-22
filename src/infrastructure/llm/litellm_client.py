@@ -103,7 +103,7 @@ class LiteLLMClient(LLMClient):
         except GenerationError:
             raise
         except Exception as exc:
-            logger.error("llm_request_failed", model=self._model, error=str(exc))
+            logger.exception("llm_request_failed", model=self._model, error=str(exc))
             raise GenerationError(
                 f"LiteLLM completion failed for model '{self._model}': {exc}"
             ) from exc
