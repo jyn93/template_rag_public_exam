@@ -69,6 +69,9 @@ class PDFDocumentLoader(DocumentLoader):
             reader = PDFReader()
             llama_docs = reader.load_data(file=path)
         except Exception as exc:
+            logger.exception(
+                "pdf_parse_failed", file=path.name, error=str(exc)
+            )
             raise IngestionError(f"Cannot parse PDF '{path.name}': {exc}") from exc
 
         documents: list[Document] = []
@@ -93,10 +96,12 @@ class PDFDocumentLoader(DocumentLoader):
                 )
             )
 
+        total_chars = sum(len(d.content) for d in documents)
         logger.info(
             "pdf_document_loaded",
             file=path.name,
             pages=len(documents),
+            total_chars=total_chars,
             subject=subject,
         )
         return documents

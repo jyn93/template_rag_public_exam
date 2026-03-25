@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Annotated
 
+import structlog
 from fastapi import Depends
 from llama_index.core.embeddings import BaseEmbedding
 from llama_index.embeddings.ollama import OllamaEmbedding
@@ -22,6 +23,8 @@ from src.infrastructure.llm.base import LLMClient
 from src.infrastructure.llm.litellm_client import LiteLLMClient
 from src.infrastructure.storage.minio_storage import MinIOStorage
 from src.infrastructure.vector_store.qdrant_store import QdrantVectorStore
+
+logger = structlog.get_logger(__name__)
 
 __all__ = [
     "IngestionPipelineDep",
@@ -47,10 +50,20 @@ def _build_embedding_model(settings: Settings) -> BaseEmbedding:
         implementation ready for use.
     """
     if settings.embedding_provider == EmbeddingProvider.OLLAMA:
+        logger.info(
+            "embedding_provider_selected",
+            provider=EmbeddingProvider.OLLAMA,
+            model=settings.ollama_embedding_model,
+        )
         return OllamaEmbedding(
             model_name=settings.ollama_embedding_model,
             base_url=settings.ollama_base_url,
         )
+    logger.info(
+        "embedding_provider_selected",
+        provider=EmbeddingProvider.OPENAI,
+        model=settings.embedding_model,
+    )
     return OpenAIEmbedding(
         model=settings.embedding_model,
         api_key=settings.openai_api_key,

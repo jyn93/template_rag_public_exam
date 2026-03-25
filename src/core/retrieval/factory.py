@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import structlog
+
 from src.core.config.settings import RetrieverType, get_settings
 from src.core.exceptions import ConfigurationError
 from src.core.retrieval.base import Retriever
@@ -15,6 +17,8 @@ if TYPE_CHECKING:
     from src.core.protocols import VectorSearchProtocol
 
 __all__ = ["RetrieverFactory"]
+
+logger = structlog.get_logger(__name__)
 
 
 class RetrieverFactory:
@@ -62,11 +66,21 @@ class RetrieverFactory:
 
         match resolved.retriever_type:
             case RetrieverType.DENSE:
+                logger.info(
+                    "retriever_created",
+                    retriever_type=RetrieverType.DENSE,
+                    top_k=resolved.top_k,
+                )
                 return DenseRetriever(
                     vector_store=vector_store,
                     top_k=resolved.top_k,
                 )
             case RetrieverType.HYBRID:
+                logger.info(
+                    "retriever_created",
+                    retriever_type=RetrieverType.HYBRID,
+                    top_k=resolved.top_k,
+                )
                 return HybridRetriever(
                     vector_store=vector_store,
                     top_k=resolved.top_k,

@@ -3,22 +3,26 @@
 from __future__ import annotations
 
 import time
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
 from typing import Any
 
 import structlog
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 
 from src.api.routers.chat import router as chat_router
 from src.api.routers.exam import router as exam_router
 from src.api.routers.ingestion import router as ingestion_router
+from src.core.config.logging_config import configure_logging
 from src.core.config.settings import get_settings
 
-logger = structlog.get_logger(__name__)
-
 settings = get_settings()
+
+# Configure logging before any logger is instantiated.
+configure_logging(log_level=settings.log_level, debug=settings.debug)
+
+logger = structlog.get_logger(__name__)
 
 _start_time: float = 0.0
 
@@ -49,6 +53,23 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next: Callable[..., Any]) -> Response:
+    """Log every HTTP request with method, path, status code, and duration."""
+    start = time.perf_counter()
+    response: Response = await call_next(request)
+    duration_ms = round((time.perf_counter() - start) * 1000, 2)
+    logger.info(
+        "http_request",
+        method=request.method,
+        path=request.url.path,
+        status_code=response.status_code,
+        duration_ms=duration_ms,
+    )
+    return response
+
 
 app.include_router(ingestion_router)
 app.include_router(chat_router)
