@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import structlog
+from langfuse import get_client, observe
 
 from src.core.config.prompts import RAG_SYSTEM_PROMPT, RAG_USER_PROMPT_TEMPLATE
 from src.core.exceptions import GenerationError
@@ -54,6 +55,46 @@ class RAGGenerator(Generator):
             llm_client: LLM adapter used for completions.
         """
         self._llm = llm_client
+
+    @observe(name="rag_generation")
+    async def generate(self, input: GenerationInput) -> GenerationOutput:
+        """Run the RAG generation pipeline with Langfuse tracing.
+
+        Wraps the base :meth:`~src.core.generation.base.Generator.generate`
+        template method inside a Langfuse observation so the full request —
+        including the nested LLM generation recorded automatically by the
+        LiteLLM callback — appears as a single trace in the Langfuse UI.
+
+        Args:
+            input: Generation input with query, retrieved context, and metadata.
+
+        Returns:
+            :class:`~src.core.generation.base.GenerationOutput` with the
+            model's answer and source previews.
+
+        Raises:
+            ValueError: If ``input.context`` is empty.
+            GenerationError: If the LLM call fails.
+        """
+        langfuse = get_client()
+        langfuse.update_current_span(
+            input={"query": input.query, "context_chunks": len(input.context)},
+            metadata={"subject": input.metadata.get("subject", ""), **input.metadata},
+        )
+        output = await super().generate(input)
+        answer_preview = (
+            output.content[:500]
+            if isinstance(output.content, str)
+            else str(output.content)[:500]
+        )
+        langfuse.update_current_span(
+            output={"answer": answer_preview},
+            metadata={
+                "tokens_used": output.tokens_used,
+                "sources": len(output.sources),
+            },
+        )
+        return output
 
     def _build_prompt(self, input: GenerationInput) -> str:
         """Format retrieved chunks and the query into the user prompt.

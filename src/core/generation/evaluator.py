@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, cast
 
 import structlog
+from langfuse import get_client, observe
 
 from src.core.config.prompts import ANSWER_EVALUATION_PROMPT
 from src.core.exceptions import GenerationError
@@ -111,6 +112,7 @@ class AnswerEvaluator:
         """
         self._llm = llm_client
 
+    @observe(name="answer_evaluation")
     async def evaluate(
         self,
         question: str,
@@ -118,6 +120,11 @@ class AnswerEvaluator:
         student_answer: str,
     ) -> EvaluationResult:
         """Evaluate a student's answer against the correct answer.
+
+        Wrapped with a Langfuse ``@observe`` span so the question, student
+        answer, and resulting score are captured as a single trace, with the
+        underlying LLM generation linked as a child span via the LiteLLM
+        Langfuse callback.
 
         Args:
             question: The exam question text.
@@ -141,6 +148,14 @@ class AnswerEvaluator:
         """
         self._validate(question, correct_answer, student_answer)
 
+        langfuse = get_client()
+        langfuse.update_current_span(
+            input={
+                "question": question[:300],
+                "student_answer": student_answer[:300],
+            },
+        )
+
         prompt = ANSWER_EVALUATION_PROMPT.format(
             question=question,
             correct_answer=correct_answer,
@@ -155,6 +170,10 @@ class AnswerEvaluator:
 
         raw = await self._call_llm(prompt)
         result = self._parse_result(raw)
+
+        langfuse.update_current_span(
+            output={"score": result.score, "is_correct": result.is_correct},
+        )
 
         logger.info(
             "answer_evaluation_complete",
