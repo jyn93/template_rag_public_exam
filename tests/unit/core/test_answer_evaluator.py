@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -279,3 +279,81 @@ class TestEvaluate:
         d = result.to_dict()
         assert isinstance(d, dict)
         assert "score" in d
+
+
+# ── TestTracingObservation ─────────────────────────────────────────────────────
+
+
+class TestTracingObservation:
+    """Verify that langfuse_context.update_current_observation is called correctly."""
+
+    async def test_observation_input_contains_question(self, evaluator):
+        """update_current_observation is called with question in input."""
+        mock_ctx = MagicMock()
+        with patch(
+            "src.core.generation.evaluator.langfuse_context", mock_ctx
+        ):
+            await evaluator.evaluate(
+                question="What is due process?",
+                correct_answer="A legal requirement.",
+                student_answer="Fair treatment.",
+            )
+
+        first_call_kwargs = mock_ctx.update_current_observation.call_args_list[0].kwargs
+        assert "What is due process?" in first_call_kwargs["input"]["question"]
+
+    async def test_observation_input_contains_student_answer(self, evaluator):
+        """update_current_observation is called with student_answer in input."""
+        mock_ctx = MagicMock()
+        with patch(
+            "src.core.generation.evaluator.langfuse_context", mock_ctx
+        ):
+            await evaluator.evaluate(
+                question="Q?",
+                correct_answer="A.",
+                student_answer="My answer here.",
+            )
+
+        first_call_kwargs = mock_ctx.update_current_observation.call_args_list[0].kwargs
+        assert "My answer here." in first_call_kwargs["input"]["student_answer"]
+
+    async def test_observation_output_contains_score(self, evaluator):
+        """update_current_observation is called with score in output."""
+        mock_ctx = MagicMock()
+        with patch(
+            "src.core.generation.evaluator.langfuse_context", mock_ctx
+        ):
+            await evaluator.evaluate(
+                question="Q?", correct_answer="A.", student_answer="S."
+            )
+
+        last_call_kwargs = mock_ctx.update_current_observation.call_args_list[-1].kwargs
+        assert last_call_kwargs["output"]["score"] == 8
+        assert last_call_kwargs["output"]["is_correct"] is True
+
+    async def test_observation_called_twice(self, evaluator):
+        """update_current_observation is called once for input and once for output."""
+        mock_ctx = MagicMock()
+        with patch(
+            "src.core.generation.evaluator.langfuse_context", mock_ctx
+        ):
+            await evaluator.evaluate(
+                question="Q?", correct_answer="A.", student_answer="S."
+            )
+
+        assert mock_ctx.update_current_observation.call_count == 2
+
+    async def test_input_truncated_to_300_chars(self, evaluator):
+        """Long question and student_answer are truncated to 300 chars in the trace."""
+        long_text = "X" * 500
+        mock_ctx = MagicMock()
+        with patch(
+            "src.core.generation.evaluator.langfuse_context", mock_ctx
+        ):
+            await evaluator.evaluate(
+                question=long_text, correct_answer="A.", student_answer=long_text
+            )
+
+        first_call_kwargs = mock_ctx.update_current_observation.call_args_list[0].kwargs
+        assert len(first_call_kwargs["input"]["question"]) == 300
+        assert len(first_call_kwargs["input"]["student_answer"]) == 300

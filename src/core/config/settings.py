@@ -93,6 +93,7 @@ class Settings(BaseSettings):
     chunk_overlap: int = 64
 
     # ── Langfuse ──────────────────────────────────────────────────────────────
+    langfuse_enabled: bool = True
     langfuse_host: str = "http://localhost:3000"
     langfuse_public_key: str = ""
     langfuse_secret_key: str = ""

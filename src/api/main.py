@@ -16,6 +16,7 @@ from src.api.routers.exam import router as exam_router
 from src.api.routers.ingestion import router as ingestion_router
 from src.core.config.logging_config import configure_logging
 from src.core.config.settings import get_settings
+from src.infrastructure.observability.langfuse_tracer import LangfuseService
 
 settings = get_settings()
 
@@ -32,6 +33,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:  # noqa: ARG001
     """Record the precise startup time when the application is ready."""
     global _start_time  # noqa: PLW0603
     _start_time = time.time()
+    LangfuseService.configure(settings)
     logger.info("api_startup", service=settings.app_name)
     yield
     logger.info("api_shutdown", service=settings.app_name)

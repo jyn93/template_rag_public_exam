@@ -6,6 +6,7 @@ import json
 from typing import TYPE_CHECKING, cast
 
 import structlog
+from langfuse.decorators import langfuse_context, observe
 
 from src.core.config.prompts import EXAM_GENERATION_PROMPT
 from src.core.exceptions import GenerationError
@@ -77,6 +78,47 @@ class ExamGenerator(Generator):
         self._num_questions = num_questions
         self._exam_type = exam_type
         self._difficulty = difficulty
+
+    @observe(name="exam_generation")
+    async def generate(self, input: GenerationInput) -> GenerationOutput:
+        """Run the exam generation pipeline with Langfuse tracing.
+
+        Wraps the base :meth:`~src.core.generation.base.Generator.generate`
+        template method inside a Langfuse observation so the exam parameters
+        and the nested LLM generation appear as a single structured trace.
+
+        Args:
+            input: Generation input with topic query, context chunks, and
+                optional metadata (e.g. ``{"subject": "Administrative Law"}``).
+
+        Returns:
+            :class:`~src.core.generation.base.GenerationOutput` with the
+            structured exam dict and source chunks.
+
+        Raises:
+            ValueError: If ``input.context`` is empty.
+            GenerationError: If the LLM call fails.
+        """
+        langfuse_context.update_current_observation(
+            input={"query": input.query, "context_chunks": len(input.context)},
+            metadata={
+                "exam_type": self._exam_type,
+                "difficulty": self._difficulty,
+                "num_questions": self._num_questions,
+                **input.metadata,
+            },
+        )
+        output = await super().generate(input)
+        questions = (
+            cast(list[object], output.content.get("questions", []))
+            if isinstance(output.content, dict)
+            else []
+        )
+        langfuse_context.update_current_observation(
+            output={"questions_generated": len(questions)},
+            metadata={"tokens_used": output.tokens_used},
+        )
+        return output
 
     def _build_prompt(self, input: GenerationInput) -> str:
         """Format the exam generation prompt with context and parameters.

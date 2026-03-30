@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -317,3 +317,69 @@ class TestGenerate:
         )
         result = await g.generate(make_input())
         assert isinstance(result, GenerationOutput)
+
+
+# ── TestTracingObservation ─────────────────────────────────────────────────────
+
+
+class TestTracingObservation:
+    """Verify that langfuse_context.update_current_observation is called correctly."""
+
+    async def test_observation_input_contains_query(self, generator):
+        """update_current_observation is called with query in input."""
+        mock_ctx = MagicMock()
+        inp = make_input(query="Administrative appeal procedure")
+        with patch(
+            "src.core.generation.exam_generator.langfuse_context", mock_ctx
+        ):
+            await generator.generate(inp)
+
+        first_call_kwargs = mock_ctx.update_current_observation.call_args_list[0].kwargs
+        assert first_call_kwargs["input"]["query"] == "Administrative appeal procedure"
+
+    async def test_observation_input_contains_context_chunk_count(self, generator):
+        """update_current_observation input includes context_chunks count."""
+        mock_ctx = MagicMock()
+        inp = make_input(context=["chunk1", "chunk2", "chunk3"])
+        with patch(
+            "src.core.generation.exam_generator.langfuse_context", mock_ctx
+        ):
+            await generator.generate(inp)
+
+        first_call_kwargs = mock_ctx.update_current_observation.call_args_list[0].kwargs
+        assert first_call_kwargs["input"]["context_chunks"] == 3
+
+    async def test_observation_input_metadata_contains_exam_params(self, generator):
+        """update_current_observation metadata includes exam params."""
+        mock_ctx = MagicMock()
+        with patch(
+            "src.core.generation.exam_generator.langfuse_context", mock_ctx
+        ):
+            await generator.generate(make_input())
+
+        first_call_kwargs = mock_ctx.update_current_observation.call_args_list[0].kwargs
+        meta = first_call_kwargs["metadata"]
+        assert meta["exam_type"] == generator._exam_type
+        assert meta["difficulty"] == generator._difficulty
+        assert meta["num_questions"] == generator._num_questions
+
+    async def test_observation_output_contains_questions_generated(self, generator):
+        """update_current_observation output includes questions_generated count."""
+        mock_ctx = MagicMock()
+        with patch(
+            "src.core.generation.exam_generator.langfuse_context", mock_ctx
+        ):
+            await generator.generate(make_input())
+
+        last_call_kwargs = mock_ctx.update_current_observation.call_args_list[-1].kwargs
+        assert last_call_kwargs["output"]["questions_generated"] == 1
+
+    async def test_observation_called_twice(self, generator):
+        """update_current_observation is called once for input and once for output."""
+        mock_ctx = MagicMock()
+        with patch(
+            "src.core.generation.exam_generator.langfuse_context", mock_ctx
+        ):
+            await generator.generate(make_input())
+
+        assert mock_ctx.update_current_observation.call_count == 2

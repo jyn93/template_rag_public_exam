@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -217,3 +217,73 @@ class TestRAGGeneratorGenerate:
         prompt_arg = mock_llm.complete.call_args.args[0]
         for chunk in chunks:
             assert chunk in prompt_arg
+
+
+# ── TestTracingObservation ─────────────────────────────────────────────────────
+
+
+class TestTracingObservation:
+    """Verify that langfuse_context.update_current_observation is called correctly."""
+
+    async def test_observation_input_contains_query(self, generator):
+        """update_current_observation is called with query in input."""
+        mock_ctx = MagicMock()
+        inp = make_input(query="What is an administrative appeal?")
+        with patch(
+            "src.core.generation.rag_generator.langfuse_context", mock_ctx
+        ):
+            await generator.generate(inp)
+
+        first_call_kwargs = mock_ctx.update_current_observation.call_args_list[0].kwargs
+        expected = "What is an administrative appeal?"
+        assert first_call_kwargs["input"]["query"] == expected
+
+    async def test_observation_input_contains_context_chunk_count(self, generator):
+        """update_current_observation input includes context_chunks count."""
+        mock_ctx = MagicMock()
+        inp = make_input(context=["chunk1", "chunk2"])
+        with patch(
+            "src.core.generation.rag_generator.langfuse_context", mock_ctx
+        ):
+            await generator.generate(inp)
+
+        first_call_kwargs = mock_ctx.update_current_observation.call_args_list[0].kwargs
+        assert first_call_kwargs["input"]["context_chunks"] == 2
+
+    async def test_observation_output_contains_answer_preview(
+        self, generator, mock_llm
+    ):
+        """update_current_observation output includes the answer preview."""
+        mock_ctx = MagicMock()
+        mock_llm.complete.return_value = "The answer is X."
+        with patch(
+            "src.core.generation.rag_generator.langfuse_context", mock_ctx
+        ):
+            await generator.generate(make_input())
+
+        last_call_kwargs = mock_ctx.update_current_observation.call_args_list[-1].kwargs
+        assert last_call_kwargs["output"]["answer"] == "The answer is X."
+
+    async def test_observation_output_answer_truncated_to_500_chars(
+        self, generator, mock_llm
+    ):
+        """Answer preview in output is truncated to 500 characters."""
+        mock_ctx = MagicMock()
+        mock_llm.complete.return_value = "A" * 600
+        with patch(
+            "src.core.generation.rag_generator.langfuse_context", mock_ctx
+        ):
+            await generator.generate(make_input())
+
+        last_call_kwargs = mock_ctx.update_current_observation.call_args_list[-1].kwargs
+        assert len(last_call_kwargs["output"]["answer"]) == 500
+
+    async def test_observation_called_twice(self, generator):
+        """update_current_observation is called once for input and once for output."""
+        mock_ctx = MagicMock()
+        with patch(
+            "src.core.generation.rag_generator.langfuse_context", mock_ctx
+        ):
+            await generator.generate(make_input())
+
+        assert mock_ctx.update_current_observation.call_count == 2
