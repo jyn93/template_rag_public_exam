@@ -284,3 +284,95 @@ class TestExamEvaluate:
             },
         )
         assert response.status_code == 422
+
+
+# ── TestExamExport ────────────────────────────────────────────────────────────
+
+_SAMPLE_EXAM: dict[str, object] = {
+    "title": "Admin Law Test",
+    "questions": [
+        {
+            "id": "1",
+            "type": "test",
+            "question": "What is an administrative appeal?",
+            "options": ["Option A", "Option B", "Option C", "Option D"],
+            "correct_answer": "Option A",
+            "explanation": "An administrative appeal is a formal challenge.",
+        }
+    ],
+}
+
+
+class TestExamExport:
+    """Tests for POST /exam/export."""
+
+    def test_returns_200(self, client: TestClient) -> None:
+        """Valid exam dict returns HTTP 200."""
+        response = client.post(
+            "/exam/export",
+            json={"exam": _SAMPLE_EXAM},
+        )
+        assert response.status_code == 200
+
+    def test_response_content_type_is_pdf(self, client: TestClient) -> None:
+        """Response Content-Type is application/pdf."""
+        response = client.post(
+            "/exam/export",
+            json={"exam": _SAMPLE_EXAM},
+        )
+        assert response.headers["content-type"] == "application/pdf"
+
+    def test_response_body_starts_with_pdf_header(self, client: TestClient) -> None:
+        """Response binary content starts with %PDF magic bytes."""
+        response = client.post(
+            "/exam/export",
+            json={"exam": _SAMPLE_EXAM},
+        )
+        assert response.content.startswith(b"%PDF-")
+
+    def test_content_disposition_header_present(self, client: TestClient) -> None:
+        """Response includes Content-Disposition attachment header."""
+        response = client.post(
+            "/exam/export",
+            json={"exam": _SAMPLE_EXAM},
+        )
+        assert "attachment" in response.headers.get("content-disposition", "")
+
+    def test_include_answers_true_produces_larger_pdf(
+        self, client: TestClient
+    ) -> None:
+        """PDF with answer key is larger than without."""
+        without = client.post(
+            "/exam/export",
+            json={"exam": _SAMPLE_EXAM, "include_answers": False},
+        )
+        with_key = client.post(
+            "/exam/export",
+            json={"exam": _SAMPLE_EXAM, "include_answers": True},
+        )
+        assert len(with_key.content) > len(without.content)
+
+    def test_empty_questions_list_still_returns_pdf(
+        self, client: TestClient
+    ) -> None:
+        """Exam with no questions still returns a valid PDF."""
+        response = client.post(
+            "/exam/export",
+            json={"exam": {"title": "Empty", "questions": []}},
+        )
+        assert response.status_code == 200
+        assert response.content.startswith(b"%PDF-")
+
+    def test_missing_exam_field_returns_422(self, client: TestClient) -> None:
+        """Request missing the 'exam' field returns HTTP 422."""
+        response = client.post("/exam/export", json={})
+        assert response.status_code == 422
+
+    def test_filename_derived_from_exam_title(self, client: TestClient) -> None:
+        """Content-Disposition filename matches the exam title."""
+        response = client.post(
+            "/exam/export",
+            json={"exam": {"title": "My Exam", "questions": []}},
+        )
+        disposition = response.headers.get("content-disposition", "")
+        assert "My_Exam.pdf" in disposition

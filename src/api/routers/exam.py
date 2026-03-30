@@ -6,10 +6,12 @@ from typing import Annotated, Literal
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
 from src.api.dependencies import get_answer_evaluator, get_llm_client, get_retriever
 from src.core.exceptions import GenerationError, RetrievalError
+from src.core.export.pdf_generator import ExamPDFGenerator
 from src.core.generation.base import GenerationInput
 from src.core.generation.evaluator import AnswerEvaluator
 from src.core.generation.exam_generator import ExamGenerator
@@ -81,6 +83,18 @@ class EvaluateResponse(BaseModel):
     feedback: str
     missing_points: list[str]
     strengths: list[str]
+
+
+class ExamExportRequest(BaseModel):
+    """Request body for exam PDF export."""
+
+    exam: dict[str, object] = Field(
+        ..., description="Structured exam dict produced by /exam/generate."
+    )
+    include_answers: bool = Field(
+        default=False,
+        description="If true, append an answer key page to the PDF.",
+    )
 
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
@@ -221,4 +235,56 @@ async def evaluate_answer(
         feedback=result.feedback,
         missing_points=result.missing_points,
         strengths=result.strengths,
+    )
+
+
+@router.post(
+    "/export",
+    summary="Export a generated exam as a PDF file",
+    response_class=Response,
+    responses={
+        200: {
+            "content": {"application/pdf": {}},
+            "description": "PDF file download.",
+        }
+    },
+    status_code=status.HTTP_200_OK,
+)
+async def export_exam_pdf(body: ExamExportRequest) -> Response:
+    """Render a structured exam dict to a downloadable PDF.
+
+    Args:
+        body: The exam dict (from ``/exam/generate``) and optional flag to
+            include the answer key page.
+
+    Returns:
+        A ``application/pdf`` response with the PDF bytes and a
+        ``Content-Disposition: attachment`` header.
+
+    Raises:
+        500: If PDF generation fails unexpectedly.
+    """
+    logger.info(
+        "exam_export_request",
+        num_questions=len(list(body.exam.get("questions", []))),  # type: ignore[call-overload]
+        include_answers=body.include_answers,
+    )
+
+    try:
+        generator = ExamPDFGenerator()
+        pdf_bytes = generator.generate(body.exam, include_answers=body.include_answers)
+    except Exception as exc:
+        logger.exception("exam_export_failed", error=str(exc))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"PDF generation failed: {exc}",
+        ) from exc
+
+    title = str(body.exam.get("title", "exam")).replace(" ", "_")
+    filename = f"{title}.pdf"
+
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )

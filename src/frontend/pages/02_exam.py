@@ -6,7 +6,11 @@ from typing import cast
 
 import streamlit as st
 
-from src.frontend.api_client import call_exam_evaluate_api, call_exam_generate_api
+from src.frontend.api_client import (
+    call_exam_evaluate_api,
+    call_exam_export_api,
+    call_exam_generate_api,
+)
 
 _DEFAULT_NUM_QUESTIONS = 5
 _DEFAULT_TOP_K = 5
@@ -177,6 +181,31 @@ if st.session_state.exam_data:
 
                     with st.expander("Correct answer", expanded=False):
                         st.markdown(correct)
+
+        # ── Export / Download PDF ─────────────────────────────────────────────
+
+        st.divider()
+        pdf_col1, pdf_col2 = st.columns(2)
+        with pdf_col1:
+            include_ans = st.checkbox("Include answer key in PDF", value=False)
+        with pdf_col2:
+            if st.button("📄 Generate PDF", use_container_width=True):
+                with st.spinner("Generating PDF…"):
+                    pdf_bytes, pdf_error = call_exam_export_api(
+                        exam=dict(exam),
+                        include_answers=include_ans,
+                    )
+                if pdf_error:
+                    st.error(f"❌ PDF generation failed: {pdf_error}")
+                else:
+                    title = str(exam.get("title", "exam")).replace(" ", "_")
+                    st.download_button(
+                        label="⬇️ Download PDF",
+                        data=pdf_bytes,
+                        file_name=f"{title}.pdf",
+                        mime="application/pdf",
+                        use_container_width=True,
+                    )
 
         # ── Evaluate button ───────────────────────────────────────────────────
 
