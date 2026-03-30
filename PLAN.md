@@ -1282,7 +1282,7 @@ mypy = "^1.11"
    - Pantalla de resultados: puntuación, revisión pregunta a pregunta con explicaciones
    - Sin cambios en backend — trabajo puramente de Streamlit
 
-3. [ ] **Exportación de exámenes a PDF** (`feature/exam-export-pdf`)
+3. [x] **Exportación de exámenes a PDF** (`feature/exam-export-pdf`) — PR #27 ✅
    - Endpoint `GET /exam/export` que devuelve PDF con el examen generado
    - Botón "Descargar PDF" en la UI de exámenes
    - Útil para estudio en papel o impresión
