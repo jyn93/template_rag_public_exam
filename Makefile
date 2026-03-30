@@ -1,9 +1,14 @@
-.PHONY: help up down infra test lint type-check format eval ingest logs shell clean
+.PHONY: help up down infra test lint type-check format eval ingest logs shell clean install-venv
 
 # ── Default ───────────────────────────────────────────────────────────────────
 help: ## Show this help message
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
 		awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2}'
+
+# ── Local setup ───────────────────────────────────────────────────────────────
+install-venv: ## Create local virtualenv and install all dependencies with uv
+	uv lock
+	uv sync
 
 # ── Docker ────────────────────────────────────────────────────────────────────
 up: ## Start all services (production mode)
