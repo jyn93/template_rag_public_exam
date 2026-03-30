@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, cast
 
 import structlog
-from langfuse import get_client, observe
+from langfuse.decorators import langfuse_context, observe
 
 from src.core.config.prompts import ANSWER_EVALUATION_PROMPT
 from src.core.exceptions import GenerationError
@@ -148,8 +148,7 @@ class AnswerEvaluator:
         """
         self._validate(question, correct_answer, student_answer)
 
-        langfuse = get_client()
-        langfuse.update_current_span(
+        langfuse_context.update_current_observation(
             input={
                 "question": question[:300],
                 "student_answer": student_answer[:300],
@@ -171,7 +170,7 @@ class AnswerEvaluator:
         raw = await self._call_llm(prompt)
         result = self._parse_result(raw)
 
-        langfuse.update_current_span(
+        langfuse_context.update_current_observation(
             output={"score": result.score, "is_correct": result.is_correct},
         )
 

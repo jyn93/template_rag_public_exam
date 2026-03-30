@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import structlog
-from langfuse import get_client, observe
+from langfuse.decorators import langfuse_context, observe
 
 from src.core.config.prompts import RAG_SYSTEM_PROMPT, RAG_USER_PROMPT_TEMPLATE
 from src.core.exceptions import GenerationError
@@ -76,8 +76,7 @@ class RAGGenerator(Generator):
             ValueError: If ``input.context`` is empty.
             GenerationError: If the LLM call fails.
         """
-        langfuse = get_client()
-        langfuse.update_current_span(
+        langfuse_context.update_current_observation(
             input={"query": input.query, "context_chunks": len(input.context)},
             metadata={"subject": input.metadata.get("subject", ""), **input.metadata},
         )
@@ -87,7 +86,7 @@ class RAGGenerator(Generator):
             if isinstance(output.content, str)
             else str(output.content)[:500]
         )
-        langfuse.update_current_span(
+        langfuse_context.update_current_observation(
             output={"answer": answer_preview},
             metadata={
                 "tokens_used": output.tokens_used,
