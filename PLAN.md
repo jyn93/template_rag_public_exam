@@ -1270,7 +1270,7 @@ mypy = "^1.11"
 > Criterio: completar el flujo de uso del prototipo de extremo a extremo
 > antes de añadir infraestructura multi-usuario (JWT, roles, etc.).
 
-1. [ ] **Página de ingesta en Streamlit** (`feature/streamlit-ingestion-page`)
+1. [x] **Página de ingesta en Streamlit** (`feature/streamlit-ingestion-page`) — PR #25 ✅
    - Upload de documentos (PDF/TXT) desde la UI sin necesidad de CLI
    - Protección sencilla por contraseña configurable via `.env` (pre-auth)
    - Visualización del estado de ingesta (progreso, documentos ingestados)
