@@ -1253,23 +1253,48 @@ mypy = "^1.11"
 
 ## 🗓️ Roadmap de Funcionalidades
 
-### MVP (Semanas 1-3)
+### MVP (Semanas 1-3) — ✅ Completado
 - [x] Estructura de proyecto y Docker Compose
-- [x] Ingesta de PDFs y DOCX
-- [x] Chat RAG con temario
-- [x] Generación de exámenes tipo test
-- [x] Evaluación de respuestas básica
-- [x] Suite de evals con RAGAS
+- [x] Ingesta de PDFs y TXT + pipeline
+- [x] Chat RAG con temario (HybridRetriever BM25+RRF)
+- [x] Generación de exámenes tipo test y desarrollo
+- [x] Evaluación de respuestas con feedback detallado
+- [x] Suite de evals con RAGAS + LLM-as-judge
+- [x] FastAPI routers (chat, exam, ingestion)
+- [x] Streamlit UI (chat + generación de exámenes)
+- [x] Observabilidad LLM con Langfuse (tracing + LiteLLM callback)
+- [x] Logging estructurado con structlog
 
-### v1.0 (Semanas 4-6)
-- [ ] Autenticación de usuarios (JWT)
-- [ ] Historial de sesiones de estudio
-- [ ] Seguimiento de progreso por tema
-- [ ] Modo "simulacro de examen" con timer
-- [ ] Exportación de exámenes a PDF
+### v1.0 — Prioridad: funcionalidad completa antes de productivizar
 
-### v2.0 (Futuro)
-- [ ] Soporte multi-oposición (perfiles)
+> Criterio: completar el flujo de uso del prototipo de extremo a extremo
+> antes de añadir infraestructura multi-usuario (JWT, roles, etc.).
+
+1. [ ] **Página de ingesta en Streamlit** (`feature/streamlit-ingestion-page`)
+   - Upload de documentos (PDF/TXT) desde la UI sin necesidad de CLI
+   - Protección sencilla por contraseña configurable via `.env` (pre-auth)
+   - Visualización del estado de ingesta (progreso, documentos ingestados)
+   - _Prerequisito real_: sin esto el sistema solo lo puede usar un técnico
+
+2. [ ] **Modo simulacro de examen con timer** (`feature/exam-simulation-mode`)
+   - Sesión de examen completa con cuenta atrás configurable
+   - Navegación entre preguntas, respuestas bloqueadas al acabar el tiempo
+   - Pantalla de resultados: puntuación, revisión pregunta a pregunta con explicaciones
+   - Sin cambios en backend — trabajo puramente de Streamlit
+
+3. [ ] **Exportación de exámenes a PDF** (`feature/exam-export-pdf`)
+   - Endpoint `GET /exam/export` que devuelve PDF con el examen generado
+   - Botón "Descargar PDF" en la UI de exámenes
+   - Útil para estudio en papel o impresión
+
+4. [ ] **Historial de sesiones y seguimiento de progreso** (`feature/study-history`)
+   - Capa PostgreSQL: modelos SQLAlchemy + migraciones Alembic
+   - Guardar cada sesión de examen/chat con puntuación y timestamps
+   - Dashboard de progreso por tema en Streamlit
+
+### v2.0 (Futuro) — Productivización y multiusuario
+- [ ] Autenticación JWT (aplazada intencionalmente hasta completar v1.0)
+- [ ] Soporte multi-oposición (perfiles de usuario)
 - [ ] Flashcards con spaced repetition
 - [ ] Resúmenes automáticos de temas
 - [ ] Modo oral (speech-to-text + TTS)
