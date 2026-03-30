@@ -9,6 +9,7 @@ import httpx
 __all__ = [
     "call_chat_api",
     "call_exam_evaluate_api",
+    "call_exam_export_api",
     "call_exam_generate_api",
     "call_ingest_api",
     "extract_detail",
@@ -140,6 +141,37 @@ def call_exam_generate_api(
         return {}, [], f"API error {exc.response.status_code}: {detail}"
     except httpx.RequestError as exc:
         return {}, [], f"Could not reach the API: {exc}"
+
+
+# ── Exam export ───────────────────────────────────────────────────────────────
+
+
+def call_exam_export_api(
+    exam: dict[str, object],
+    include_answers: bool = False,
+) -> tuple[bytes, str]:
+    """Call POST /exam/export and return (pdf_bytes, error_message).
+
+    Args:
+        exam: Structured exam dict as returned by :func:`call_exam_generate_api`.
+        include_answers: If ``True``, request the server to append an answer key.
+
+    Returns:
+        Tuple of ``(pdf_bytes, error)``.  On success, *error* is empty and
+        *pdf_bytes* contains the raw PDF content.  On failure, *pdf_bytes* is
+        empty and *error* contains a human-readable message.
+    """
+    payload = {"exam": exam, "include_answers": include_answers}
+    try:
+        with httpx.Client(timeout=_TIMEOUT) as client:
+            response = client.post(f"{API_URL}/exam/export", json=payload)
+        response.raise_for_status()
+        return response.content, ""
+    except httpx.HTTPStatusError as exc:
+        detail = extract_detail(exc.response)
+        return b"", f"API error {exc.response.status_code}: {detail}"
+    except httpx.RequestError as exc:
+        return b"", f"Could not reach the API: {exc}"
 
 
 # ── Answer evaluation ─────────────────────────────────────────────────────────
