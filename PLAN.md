@@ -1276,7 +1276,7 @@ mypy = "^1.11"
    - Visualización del estado de ingesta (progreso, documentos ingestados)
    - _Prerequisito real_: sin esto el sistema solo lo puede usar un técnico
 
-2. [ ] **Modo simulacro de examen con timer** (`feature/exam-simulation-mode`)
+2. [x] **Modo simulacro de examen con timer** (`feature/exam-simulation-mode`) — PR #26 ✅
    - Sesión de examen completa con cuenta atrás configurable
    - Navegación entre preguntas, respuestas bloqueadas al acabar el tiempo
    - Pantalla de resultados: puntuación, revisión pregunta a pregunta con explicaciones
