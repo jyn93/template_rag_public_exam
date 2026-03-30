@@ -92,6 +92,10 @@ class Settings(BaseSettings):
     chunk_size: int = 512
     chunk_overlap: int = 64
 
+    # ── Frontend ──────────────────────────────────────────────────────────────
+    # Password to protect the ingestion page. Empty string = no protection (dev mode).
+    ingestion_admin_password: str = ""
+
     # ── Langfuse ──────────────────────────────────────────────────────────────
     langfuse_enabled: bool = True
     langfuse_host: str = "http://localhost:3000"

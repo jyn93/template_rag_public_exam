@@ -10,11 +10,52 @@ __all__ = [
     "call_chat_api",
     "call_exam_evaluate_api",
     "call_exam_generate_api",
+    "call_ingest_api",
     "extract_detail",
 ]
 
 API_URL = os.getenv("API_URL", "http://localhost:8000")
 _TIMEOUT = 60.0
+
+
+# ── Ingestion ─────────────────────────────────────────────────────────────────
+
+
+def call_ingest_api(
+    file_bytes: bytes,
+    filename: str,
+    subject: str,
+) -> tuple[dict[str, object], str]:
+    """Call POST /ingest and return (result_dict, error_message).
+
+    Uploads a document file as multipart form data together with the subject
+    label. The backend validates the extension and size before indexing.
+
+    Args:
+        file_bytes: Raw file content to upload.
+        filename: Original file name including extension (e.g. ``"tema1.pdf"``).
+        subject: Human-readable subject label (e.g. ``"Administrative Law"``).
+
+    Returns:
+        Tuple of ``(result, error)``.  On success, *error* is an empty string
+        and *result* contains ``total_documents``, ``total_chunks``,
+        ``subject``, and ``filename``.  On failure, *result* is empty and
+        *error* contains a human-readable message.
+    """
+    try:
+        with httpx.Client(timeout=120.0) as client:
+            response = client.post(
+                f"{API_URL}/ingest",
+                files={"file": (filename, file_bytes)},
+                data={"subject": subject},
+            )
+        response.raise_for_status()
+        return dict(response.json()), ""
+    except httpx.HTTPStatusError as exc:
+        detail = extract_detail(exc.response)
+        return {}, f"API error {exc.response.status_code}: {detail}"
+    except httpx.RequestError as exc:
+        return {}, f"Could not reach the API: {exc}"
 
 
 # ── Chat ──────────────────────────────────────────────────────────────────────
