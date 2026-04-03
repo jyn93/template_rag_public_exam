@@ -7,7 +7,11 @@ from typing import cast
 
 import streamlit as st
 
-from src.frontend.api_client import call_exam_evaluate_api, call_exam_generate_api
+from src.frontend.api_client import (
+    call_exam_evaluate_api,
+    call_exam_generate_api,
+    call_history_record_api,
+)
 from src.frontend.pages._simulacro_helpers import (
     compute_score_summary,
     format_remaining,
@@ -57,6 +61,7 @@ def _reset_simulation() -> None:
             st.session_state[key] = type(val)()
         else:
             st.session_state[key] = val
+    st.session_state.sim_session_saved = False
 
 
 # ── Timer fragment (auto-refreshes every second during active exam) ───────────
@@ -294,6 +299,22 @@ elif st.session_state.sim_state == _STATE_RESULTS:
     summary = compute_score_summary(
         questions, dict(st.session_state.sim_evaluations)
     )
+
+    # Persist session once (guard with a session-state flag)
+    if not st.session_state.get("sim_session_saved") and st.session_state.sim_answers:
+        exam_obj = cast(dict[str, object], st.session_state.sim_exam_data)
+        _topic = str(exam_obj.get("title", ""))
+        _subject = str(exam_obj.get("subject", ""))
+        call_history_record_api(
+            session_type="exam",
+            topic=_topic or None,
+            subject=_subject or None,
+            score_avg=float(summary["score_avg"]),  # type: ignore[arg-type]
+            num_questions=int(summary["total"]),  # type: ignore[arg-type]
+            num_correct=int(summary["correct"]),  # type: ignore[arg-type]
+            percentage=int(summary["percentage"]),  # type: ignore[arg-type]
+        )
+        st.session_state.sim_session_saved = True
 
     elapsed_secs = int(time.time() - float(st.session_state.sim_start_time))
     time_taken = format_remaining(
