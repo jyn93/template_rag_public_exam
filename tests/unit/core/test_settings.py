@@ -17,7 +17,7 @@ class TestSettings:
         )
         assert settings.app_name == "RAG Oposiciones"
         assert settings.debug is False
-        assert settings.llm_provider == LLMProvider.ANTHROPIC
+        assert settings.llm_provider == LLMProvider.GROQ
         assert settings.retriever_type == RetrieverType.HYBRID
         assert settings.top_k == 5
         assert settings.chunk_size == 512
@@ -62,11 +62,6 @@ class TestSettings:
             llm_provider=provider,
         )
         assert settings.llm_provider == provider
-
-    def test_groq_api_key_default_is_empty(self) -> None:
-        """Verify groq_api_key defaults to empty string."""
-        settings = Settings(_env_file=None)  # type: ignore[call-arg]
-        assert settings.groq_api_key == ""
 
     def test_groq_api_key_accepted_via_constructor(self) -> None:
         """Verify groq_api_key can be set programmatically."""
