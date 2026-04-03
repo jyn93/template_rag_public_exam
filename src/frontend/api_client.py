@@ -12,6 +12,8 @@ __all__ = [
     "call_exam_export_api",
     "call_exam_generate_api",
     "call_ingest_api",
+    "call_history_list_api",
+    "call_history_record_api",
     "extract_detail",
 ]
 
@@ -210,6 +212,91 @@ def call_exam_evaluate_api(
         return {}, f"API error {exc.response.status_code}: {detail}"
     except httpx.RequestError as exc:
         return {}, f"Could not reach the API: {exc}"
+
+
+# ── Study history ─────────────────────────────────────────────────────────────
+
+
+def call_history_record_api(
+    session_type: str,
+    topic: str | None = None,
+    subject: str | None = None,
+    score_avg: float | None = None,
+    num_questions: int | None = None,
+    num_correct: int | None = None,
+    percentage: int | None = None,
+) -> tuple[dict[str, object], str]:
+    """Call POST /history/sessions and return (session_dict, error_message).
+
+    Args:
+        session_type: ``"exam"`` or ``"chat"``.
+        topic: Topic or query text.
+        subject: Subject label.
+        score_avg: Average score per question (0–10).
+        num_questions: Total number of questions.
+        num_correct: Number of correct answers.
+        percentage: Percentage correct (0–100).
+
+    Returns:
+        Tuple of ``(session, error)``.  On success, *error* is empty.
+    """
+    payload: dict[str, object] = {"session_type": session_type}
+    if topic is not None:
+        payload["topic"] = topic
+    if subject is not None:
+        payload["subject"] = subject
+    if score_avg is not None:
+        payload["score_avg"] = score_avg
+    if num_questions is not None:
+        payload["num_questions"] = num_questions
+    if num_correct is not None:
+        payload["num_correct"] = num_correct
+    if percentage is not None:
+        payload["percentage"] = percentage
+
+    try:
+        with httpx.Client(timeout=_TIMEOUT) as client:
+            response = client.post(f"{API_URL}/history/sessions", json=payload)
+        response.raise_for_status()
+        return dict(response.json()), ""
+    except httpx.HTTPStatusError as exc:
+        detail = extract_detail(exc.response)
+        return {}, f"API error {exc.response.status_code}: {detail}"
+    except httpx.RequestError as exc:
+        return {}, f"Could not reach the API: {exc}"
+
+
+def call_history_list_api(
+    limit: int = 50,
+    subject: str | None = None,
+    session_type: str | None = None,
+) -> tuple[list[dict[str, object]], str]:
+    """Call GET /history/sessions and return (sessions_list, error_message).
+
+    Args:
+        limit: Maximum number of records to retrieve.
+        subject: Optional subject filter.
+        session_type: Optional type filter (``"exam"`` or ``"chat"``).
+
+    Returns:
+        Tuple of ``(sessions, error)``.  On success, *error* is empty.
+    """
+    params: dict[str, str | int] = {"limit": limit}
+    if subject:
+        params["subject"] = subject
+    if session_type:
+        params["session_type"] = session_type
+
+    try:
+        with httpx.Client(timeout=_TIMEOUT) as client:
+            response = client.get(f"{API_URL}/history/sessions", params=params)
+        response.raise_for_status()
+        return list(response.json()), ""
+    except httpx.HTTPStatusError as exc:
+        detail = extract_detail(exc.response)
+        return [], f"API error {exc.response.status_code}: {detail}"
+    except httpx.RequestError as exc:
+        return [], f"Could not reach the API: {exc}"
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────

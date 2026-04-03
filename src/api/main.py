@@ -13,6 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from src.api.routers.chat import router as chat_router
 from src.api.routers.exam import router as exam_router
+from src.api.routers.history import router as history_router
 from src.api.routers.ingestion import router as ingestion_router
 from src.core.config.logging_config import configure_logging
 from src.core.config.settings import get_settings
@@ -76,6 +77,7 @@ async def log_requests(request: Request, call_next: Callable[..., Any]) -> Respo
 app.include_router(ingestion_router)
 app.include_router(chat_router)
 app.include_router(exam_router)
+app.include_router(history_router)
 
 
 @app.get("/health", tags=["ops"])

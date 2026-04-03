@@ -40,9 +40,9 @@ class TestSettingsEmbeddingFields:
     """Tests for embedding-related Settings fields."""
 
     def test_default_provider_is_openai(self) -> None:
-        """embedding_provider defaults to openai."""
+        """embedding_provider defaults to ollama."""
         settings = Settings(_env_file=None)  # type: ignore[call-arg]
-        assert settings.embedding_provider == EmbeddingProvider.OPENAI
+        assert settings.embedding_provider == EmbeddingProvider.OLLAMA
 
     def test_default_ollama_embedding_model(self) -> None:
         """ollama_embedding_model defaults to nomic-embed-text."""
